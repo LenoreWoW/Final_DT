@@ -1,0 +1,381 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h1 class="mb-4">Quantum Features</h1>
+
+    <div class="row">
+        <!-- Quantum Status Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Quantum Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">Quantum Monte Carlo</h5>
+                                <span class="badge {% if quantum_status.qmc_available %}bg-success{% else %}bg-danger{% endif %}">
+                                    {% if quantum_status.qmc_available %}Available{% else %}Unavailable{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">Quantum Machine Learning</h5>
+                                <span class="badge {% if quantum_status.qml_available %}bg-success{% else %}bg-danger{% endif %}">
+                                    {% if quantum_status.qml_available %}Available{% else %}Unavailable{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">Quantum Enabled</h5>
+                                <span class="badge {% if quantum_status.enabled %}bg-success{% else %}bg-warning{% endif %}">
+                                    {% if quantum_status.enabled %}Enabled{% else %}Disabled{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">Backend</h5>
+                                <span class="badge bg-primary">{{ quantum_status.backend }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quantum Settings Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Quantum Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form id="quantum-settings-form">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="quantum-enabled" {% if quantum_status.enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="quantum-enabled">Enable Quantum Features</label>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="quantum-backend" class="form-label">Quantum Backend</label>
+                            <select class="form-select" id="quantum-backend">
+                                <option value="simulator" {% if quantum_status.backend == "simulator" %}selected{% endif %}>Simulator</option>
+                                <option value="hardware" {% if quantum_status.backend == "hardware" %}selected{% endif %}>Hardware</option>
+                                <option value="hybrid" {% if quantum_status.backend == "hybrid" %}selected{% endif %}>Hybrid</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="error-mitigation" {% if quantum_status.error_mitigation %}checked{% endif %}>
+                            <label class="form-check-label" for="error-mitigation">Enable Error Mitigation</label>
+                        </div>
+                        
+                        <button type="button" id="save-settings" class="btn btn-primary">Save Settings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Monte Carlo Simulation Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Quantum Monte Carlo Simulation</h5>
+                </div>
+                <div class="card-body">
+                    <form id="monte-carlo-form">
+                        <div class="mb-3">
+                            <label for="distribution-type" class="form-label">Distribution Type</label>
+                            <select class="form-select" id="distribution-type">
+                                <option value="uniform">Uniform</option>
+                                <option value="gaussian">Gaussian</option>
+                                <option value="exponential">Exponential</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="iterations" class="form-label">Number of Iterations</label>
+                            <input type="number" class="form-control" id="iterations" value="1000" min="100" max="10000">
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="run-comparison" checked>
+                            <label class="form-check-label" for="run-comparison">Compare with Classical</label>
+                        </div>
+                        
+                        <button type="button" id="run-monte-carlo" class="btn btn-success">Run Simulation</button>
+                    </form>
+                    
+                    <div id="monte-carlo-results" class="mt-4" style="display: none;">
+                        <h5>Results</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Method</th>
+                                        <th>Mean</th>
+                                        <th>Std Dev</th>
+                                        <th>Time (ms)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="monte-carlo-table">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="speedup-container" class="alert alert-info" style="display: none;">
+                            <strong>Quantum Speedup:</strong> <span id="speedup-value"></span>x
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quantum Machine Learning Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Quantum Machine Learning</h5>
+                </div>
+                <div class="card-body">
+                    <form id="quantum-ml-form">
+                        <div class="mb-3">
+                            <label for="feature-map" class="form-label">Feature Map</label>
+                            <select class="form-select" id="feature-map">
+                                <option value="zz">ZZ Feature Map</option>
+                                <option value="pauli">Pauli Feature Map</option>
+                                <option value="amplitude">Amplitude Embedding</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="ansatz-type" class="form-label">Ansatz Type</label>
+                            <select class="form-select" id="ansatz-type">
+                                <option value="strongly_entangling">Strongly Entangling</option>
+                                <option value="two_local">Two Local</option>
+                                <option value="efficient_su2">Efficient SU2</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="n-layers" class="form-label">Number of Layers</label>
+                            <input type="number" class="form-control" id="n-layers" value="2" min="1" max="5">
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="compare-encodings">
+                            <label class="form-check-label" for="compare-encodings">Compare Encoding Strategies</label>
+                        </div>
+                        
+                        <button type="button" id="run-quantum-ml" class="btn btn-warning">Train Model</button>
+                    </form>
+                    
+                    <div id="quantum-ml-results" class="mt-4" style="display: none;">
+                        <h5>Model Performance</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Model</th>
+                                        <th>MSE</th>
+                                        <th>Training Time (ms)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="quantum-ml-table">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="improvement-container" class="alert alert-info" style="display: none;">
+                            <strong>Improvement:</strong> <span id="improvement-value"></span>%
+                        </div>
+                        <div id="training-history" class="mt-3" style="height: 200px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+$(document).ready(function() {
+    // Save quantum settings
+    $("#save-settings").click(function() {
+        const settings = {
+            enabled: $("#quantum-enabled").prop("checked"),
+            backend: $("#quantum-backend").val(),
+            error_mitigation: $("#error-mitigation").prop("checked")
+        };
+        
+        $.ajax({
+            url: "/api/quantum/settings",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify(settings),
+            success: function(response) {
+                alert("Settings saved successfully!");
+                location.reload();
+            },
+            error: function(xhr) {
+                alert("Error saving settings: " + xhr.responseJSON.error);
+            }
+        });
+    });
+    
+    // Run Monte Carlo simulation
+    $("#run-monte-carlo").click(function() {
+        const params = {
+            distribution_type: $("#distribution-type").val(),
+            iterations: parseInt($("#iterations").val()),
+            run_comparison: $("#run-comparison").prop("checked")
+        };
+        
+        $("#run-monte-carlo").prop("disabled", true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Running...');
+        
+        $.ajax({
+            url: "/api/quantum/monte-carlo",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify(params),
+            success: function(response) {
+                $("#monte-carlo-table").empty();
+                
+                // Add quantum results
+                $("#monte-carlo-table").append(`
+                    <tr>
+                        <td>Quantum</td>
+                        <td>${response.quantum.mean.toFixed(4)}</td>
+                        <td>${response.quantum.std.toFixed(4)}</td>
+                        <td>${response.quantum.execution_time.toFixed(2)}</td>
+                    </tr>
+                `);
+                
+                // Add classical results if available
+                if (response.classical) {
+                    $("#monte-carlo-table").append(`
+                        <tr>
+                            <td>Classical</td>
+                            <td>${response.classical.mean.toFixed(4)}</td>
+                            <td>${response.classical.std.toFixed(4)}</td>
+                            <td>${response.classical.execution_time.toFixed(2)}</td>
+                        </tr>
+                    `);
+                    
+                    // Show speedup
+                    $("#speedup-value").text(response.speedup.toFixed(2));
+                    $("#speedup-container").show();
+                } else {
+                    $("#speedup-container").hide();
+                }
+                
+                $("#monte-carlo-results").show();
+                $("#run-monte-carlo").prop("disabled", false).text("Run Simulation");
+            },
+            error: function(xhr) {
+                alert("Error running simulation: " + xhr.responseJSON.error);
+                $("#run-monte-carlo").prop("disabled", false).text("Run Simulation");
+            }
+        });
+    });
+    
+    // Run Quantum ML
+    $("#run-quantum-ml").click(function() {
+        const params = {
+            feature_map: $("#feature-map").val(),
+            ansatz_type: $("#ansatz-type").val(),
+            n_layers: parseInt($("#n-layers").val()),
+            compare_encodings: $("#compare-encodings").prop("checked")
+        };
+        
+        $("#run-quantum-ml").prop("disabled", true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Training...');
+        
+        $.ajax({
+            url: "/api/quantum/train-model",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify(params),
+            success: function(response) {
+                $("#quantum-ml-table").empty();
+                
+                // Add quantum results
+                $("#quantum-ml-table").append(`
+                    <tr>
+                        <td>Quantum</td>
+                        <td>${response.quantum.mse.toFixed(4)}</td>
+                        <td>${response.quantum.training_time.toFixed(2)}</td>
+                    </tr>
+                `);
+                
+                // Add classical results
+                $("#quantum-ml-table").append(`
+                    <tr>
+                        <td>Classical</td>
+                        <td>${response.classical.mse.toFixed(4)}</td>
+                        <td>${response.classical.training_time.toFixed(2)}</td>
+                    </tr>
+                `);
+                
+                // Show improvement
+                $("#improvement-value").text(response.improvement.toFixed(2));
+                $("#improvement-container").show();
+                
+                // Show training history chart
+                if (response.history && response.history.loss) {
+                    const ctx = document.getElementById('training-history');
+                    ctx.innerHTML = '';
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: Array.from({length: response.history.loss.length}, (_, i) => i + 1),
+                            datasets: [{
+                                label: 'Training Loss',
+                                data: response.history.loss,
+                                borderColor: 'rgba(255, 193, 7, 1)',
+                                backgroundColor: 'rgba(255, 193, 7, 0.2)',
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Loss'
+                                    }
+                                },
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Epoch'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                $("#quantum-ml-results").show();
+                $("#run-quantum-ml").prop("disabled", false).text("Train Model");
+            },
+            error: function(xhr) {
+                alert("Error training model: " + xhr.responseJSON.error);
+                $("#run-quantum-ml").prop("disabled", false).text("Train Model");
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

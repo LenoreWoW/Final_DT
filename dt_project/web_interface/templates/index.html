@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block title %}Digital Twin Dashboard{% endblock %}
+
+{% block page_title %}Digital Twin Dashboard{% endblock %}
+
+{% block additional_css %}
+<style>
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .stat-icon {
+        font-size: 2.5rem;
+        opacity: 0.8;
+    }
+    .dashboard-chart {
+        min-height: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <!-- Quick Stats -->
+    <div class="col-md-3">
+        <div class="card bg-primary text-white stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Athlete Profiles</h6>
+                        <h2 class="mt-2 mb-0">12</h2>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-running"></i>
+                    </div>
+                </div>
+                <p class="mt-3 mb-0"><small>4 new this week</small></p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-success text-white stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Simulations</h6>
+                        <h2 class="mt-2 mb-0">84</h2>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                </div>
+                <p class="mt-3 mb-0"><small>23 completed today</small></p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-info text-white stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Current Temperature</h6>
+                        <h2 class="mt-2 mb-0">22°C</h2>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-thermometer-half"></i>
+                    </div>
+                </div>
+                <p class="mt-3 mb-0"><small>Partly cloudy, 48% humidity</small></p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-warning text-white stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Quantum Status</h6>
+                        <h2 class="mt-2 mb-0" id="dashboardQuantumStatus">Off</h2>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-atom"></i>
+                    </div>
+                </div>
+                <p class="mt-3 mb-0"><small>Toggle to enable quantum features</small></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Activity Map -->
+    <div class="col-lg-8 mb-4 mb-lg-0">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center medieval-card-header">
+                <span><i class="fas fa-map-marked-alt me-2"></i>Activity Map</span>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-sm btn-outline-light medieval-btn">Day</button>
+                    <button class="btn btn-sm btn-outline-light medieval-btn active">Week</button>
+                    <button class="btn btn-sm btn-outline-light medieval-btn">Month</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="map" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Athletes -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header medieval-card-header">
+                <i class="fas fa-users me-2"></i>Recent Athletes
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">John Doe</h6>
+                                <small class="text-muted">Runner, 28 years</small>
+                            </div>
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                    </li>
+                    <li class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Sarah Smith</h6>
+                                <small class="text-muted">Triathlete, 32 years</small>
+                            </div>
+                            <span class="badge bg-warning">Training</span>
+                        </div>
+                    </li>
+                    <li class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Michael Johnson</h6>
+                                <small class="text-muted">Military, 35 years</small>
+                            </div>
+                            <span class="badge bg-danger">Recovery</span>
+                        </div>
+                    </li>
+                    <li class="list-group-item bg-transparent border-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Emily Chen</h6>
+                                <small class="text-muted">Cyclist, 26 years</small>
+                            </div>
+                            <span class="badge bg-info">New</span>
+                        </div>
+                    </li>
+                </ul>
+                <div class="p-3 text-center">
+                    <a href="{{ url_for('athlete_page') }}" class="btn btn-sm btn-outline-primary medieval-btn">
+                        <i class="fas fa-users me-1"></i> View All Athletes
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Performance Metrics -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header medieval-card-header">
+                <i class="fas fa-chart-line me-2"></i>Performance Metrics
+            </div>
+            <div class="card-body">
+                <div class="chart-container dashboard-chart">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Weather Forecast -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header medieval-card-header">
+                <i class="fas fa-cloud-sun me-2"></i>Weather Forecast
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col">
+                        <div class="card bg-dark text-center p-2">
+                            <p class="mb-1">Today</p>
+                            <i class="fas fa-sun fa-2x mb-2 text-warning"></i>
+                            <h5 class="mb-0">22°C</h5>
+                            <small class="text-muted">Sunny</small>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card bg-dark text-center p-2">
+                            <p class="mb-1">Tomorrow</p>
+                            <i class="fas fa-cloud fa-2x mb-2 text-light"></i>
+                            <h5 class="mb-0">19°C</h5>
+                            <small class="text-muted">Cloudy</small>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card bg-dark text-center p-2">
+                            <p class="mb-1">Wednesday</p>
+                            <i class="fas fa-cloud-rain fa-2x mb-2 text-info"></i>
+                            <h5 class="mb-0">17°C</h5>
+                            <small class="text-muted">Rain</small>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card bg-dark text-center p-2">
+                            <p class="mb-1">Thursday</p>
+                            <i class="fas fa-cloud-showers-heavy fa-2x mb-2 text-primary"></i>
+                            <h5 class="mb-0">15°C</h5>
+                            <small class="text-muted">Heavy Rain</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container mt-4" style="height: 200px;">
+                    <canvas id="tempChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quantum Component (initially hidden) -->
+    <div class="col-12 mb-4" id="quantumMonteCarloContainer" style="display: none;">
+        <!-- Quantum visualization will be loaded here by quantum.js -->
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize map
+        const map = L.map('map').setView([40.7128, -74.0060], 12);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Add some sample route/points
+        const routePoints = [
+            [40.7128, -74.0060],
+            [40.7138, -74.0090],
+            [40.7158, -74.0150],
+            [40.7190, -74.0180],
+            [40.7230, -74.0220],
+            [40.7280, -74.0240]
+        ];
+        
+        // Create a polyline
+        const polyline = L.polyline(routePoints, {
+            color: '#6f42c1',
+            weight: 5,
+            opacity: 0.8
+        }).addTo(map);
+        
+        // Add markers
+        L.marker([40.7128, -74.0060]).addTo(map)
+            .bindPopup('Starting Point');
+            
+        L.marker([40.7280, -74.0240]).addTo(map)
+            .bindPopup('End Point');
+        
+        // Fit map to the route
+        map.fitBounds(polyline.getBounds());
+        
+        // Initialize performance chart
+        const perfCtx = document.getElementById('performanceChart').getContext('2d');
+        const performanceChart = new Chart(perfCtx, {
+            type: 'line',
+            data: {
+                labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+                datasets: [
+                    {
+                        label: 'Endurance',
+                        data: [65, 67, 70, 72, 68, 75, 78],
+                        borderColor: '#20c997',
+                        backgroundColor: 'rgba(32, 201, 151, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Speed',
+                        data: [55, 58, 60, 65, 68, 67, 70],
+                        borderColor: '#6f42c1',
+                        backgroundColor: 'rgba(111, 66, 193, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Strength',
+                        data: [70, 72, 73, 75, 73, 72, 74],
+                        borderColor: '#fd7e14',
+                        backgroundColor: 'rgba(253, 126, 20, 0.1)',
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: '#d4af37'
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#adb5bd'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#adb5bd'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Initialize temperature chart
+        const tempCtx = document.getElementById('tempChart').getContext('2d');
+        const tempChart = new Chart(tempCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Today', 'Tomorrow', 'Wednesday', 'Thursday', 'Friday'],
+                datasets: [
+                    {
+                        label: 'Min Temp (°C)',
+                        data: [17, 15, 13, 12, 14],
+                        backgroundColor: '#0dcaf0'
+                    },
+                    {
+                        label: 'Max Temp (°C)',
+                        data: [22, 19, 17, 15, 18],
+                        backgroundColor: '#ffc107'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: '#d4af37'
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#adb5bd'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#adb5bd'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Update quantum status in dashboard
+        const quantumToggle = document.getElementById('quantumToggle');
+        const dashboardQuantumStatus = document.getElementById('dashboardQuantumStatus');
+        
+        if (quantumToggle && dashboardQuantumStatus) {
+            const updateDashboardStatus = function() {
+                const isEnabled = quantumToggle.checked;
+                dashboardQuantumStatus.textContent = isEnabled ? 'Active' : 'Off';
+            };
+            
+            // Initial update
+            updateDashboardStatus();
+            
+            // Add listener for changes
+            quantumToggle.addEventListener('change', updateDashboardStatus);
+        }
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,955 @@
+{% extends "base.html" %}
+
+{% block title %}Military Simulation{% endblock %}
+
+{% block page_title %}Military Simulation{% endblock %}
+
+{% block additional_css %}
+<style>
+    .equipment-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .equipment-card:hover {
+        transform: translateY(-5px);
+    }
+    .equipment-card.selected {
+        border: 2px solid #d4af37;
+    }
+    .load-indicator {
+        height: 5px;
+        background-color: #198754;
+    }
+    #map {
+        height: 500px;
+        width: 100%;
+    }
+    .mission-status {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        padding: 5px 10px;
+        border-radius: 4px;
+        background-color: rgba(33, 37, 41, 0.8);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Mission Configuration -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header medieval-card-header">
+                <i class="fas fa-tasks me-2"></i>Mission Parameters
+            </div>
+            <div class="card-body">
+                <form id="missionForm">
+                    <div class="mb-3">
+                        <label for="soldierSelect" class="form-label">Soldier Profile</label>
+                        <select class="form-select" id="soldierSelect">
+                            {% for profile in athlete_profiles %}
+                            <option value="{{ profile.id }}">{{ profile.name }} ({{ profile.athlete_type }})</option>
+                            {% endfor %}
+                            {% if not athlete_profiles %}
+                            <option value="">No profiles available</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="locationSelect" class="form-label">Mission Location</label>
+                        <select class="form-select" id="locationSelect">
+                            <option value="urban">Urban Environment</option>
+                            <option value="desert">Desert Terrain</option>
+                            <option value="forest">Forest Terrain</option>
+                            <option value="mountain">Mountainous Region</option>
+                            <option value="custom">Custom Location</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="customLocationFields" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="latitude" class="form-label">Latitude</label>
+                                <input type="text" class="form-control" id="latitude" placeholder="e.g. 34.0522">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="longitude" class="form-label">Longitude</label>
+                                <input type="text" class="form-control" id="longitude" placeholder="e.g. -118.2437">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="equipmentLoad" class="form-label">Equipment Load</label>
+                        <select class="form-select" id="equipmentLoad">
+                            <option value="fighting_load">Fighting Load (~25kg)</option>
+                            <option value="approach_load">Approach Load (~35kg)</option>
+                            <option value="emergency_load">Emergency Load (~45kg)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="movementType" class="form-label">Movement Type</label>
+                        <select class="form-select" id="movementType">
+                            <option value="normal">Normal March</option>
+                            <option value="rush">Rush (Rapid Movement)</option>
+                            <option value="patrol">Patrol (Vigilant)</option>
+                            <option value="stealth">Stealth (Concealed)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="missionDuration" class="form-label">Mission Duration (hours)</label>
+                        <input type="range" class="form-range" id="missionDuration" min="1" max="72" step="1" value="24">
+                        <div class="d-flex justify-content-between">
+                            <small>1h</small>
+                            <small id="durationValue">24h</small>
+                            <small>72h</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="nightOperations">
+                            <label class="form-check-label" for="nightOperations">Night Operations</label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-primary medieval-btn" id="startSimulation">
+                            <i class="fas fa-play me-2"></i>Start Simulation
+                        </button>
+                        <button type="button" class="btn btn-secondary medieval-btn" id="resetSimulation" disabled>
+                            <i class="fas fa-undo me-2"></i>Reset
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Map Display -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header medieval-card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-map me-2"></i>Tactical Map</span>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-light medieval-btn" id="mapType2D">2D</button>
+                    <button class="btn btn-sm btn-outline-light medieval-btn active" id="mapType3D">3D</button>
+                </div>
+            </div>
+            <div class="card-body p-0 position-relative">
+                <div class="mission-status">
+                    <span class="badge bg-warning">Standby</span>
+                    <span id="missionTimer">00:00:00</span>
+                </div>
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Equipment Management -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header medieval-card-header">
+                <i class="fas fa-toolbox me-2"></i>Equipment Configuration
+            </div>
+            <div class="card-body">
+                <div class="equipment-load-meter mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Current Load: <strong id="currentLoad">{{ default_equipment.current_load }} kg</strong></span>
+                        <span>Max Load: <strong id="maxLoad">{{ default_equipment.max_load }} kg</strong></span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ (default_equipment.current_load / default_equipment.max_load * 100)|round|int }}%;" 
+                             id="loadPercentage" 
+                             aria-valuenow="{{ (default_equipment.current_load / default_equipment.max_load * 100)|round|int }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">{{ (default_equipment.current_load / default_equipment.max_load * 100)|round|int }}%</div>
+                    </div>
+                </div>
+                
+                <div class="row g-2" id="equipmentGrid">
+                    {% for item in equipment_items %}
+                    <div class="col-md-4">
+                        <div class="card equipment-card {% if item.essential %}selected essential{% else %}{% if loop.index in [1, 2, 3, 4, 6] %}selected{% endif %}{% endif %}" data-id="{{ item.id }}">
+                            <div class="card-body text-center py-2">
+                                <i class="fas fa-{{ item.icon }} fa-2x mb-2"></i>
+                                <h6 class="card-title mb-0">{{ item.name }}</h6>
+                                <small>{{ item.weight }} kg</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mt-3">
+                    <button class="btn btn-sm btn-outline-secondary medieval-btn" id="optimizeLoad">
+                        <i class="fas fa-balance-scale me-1"></i> Optimize Load
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Simulation Metrics -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header medieval-card-header">
+                <i class="fas fa-chart-line me-2"></i>Mission Metrics
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                
+                <div class="row g-2 mt-3">
+                    <div class="col-md-6">
+                        <div class="card bg-dark">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-subtitle text-light">Operational Effectiveness</h6>
+                                        <h3 class="mb-0" id="operationalEffectiveness">85%</h3>
+                                    </div>
+                                    <i class="fas fa-tachometer-alt fa-2x text-info"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-dark">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-subtitle text-light">Current Fatigue</h6>
+                                        <h3 class="mb-0" id="currentFatigue">15%</h3>
+                                    </div>
+                                    <i class="fas fa-battery-half fa-2x text-warning"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quantum Analysis (initially hidden) -->
+    <div class="col-12 mb-4 quantum-component" id="quantumCircuitContainer" style="display: none;">
+        <!-- Will be populated by quantum.js -->
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize map
+        initializeMilitaryMap();
+        
+        // Initialize performance chart
+        initializePerformanceChart();
+        
+        // Handle equipment selection
+        document.querySelectorAll('.equipment-card').forEach(card => {
+            card.addEventListener('click', function() {
+                this.classList.toggle('selected');
+                updateEquipmentLoadMeter();
+            });
+        });
+        
+        // Handle custom location toggle
+        document.getElementById('locationSelect').addEventListener('change', function() {
+            const customFields = document.getElementById('customLocationFields');
+            if (this.value === 'custom') {
+                customFields.style.display = 'block';
+            } else {
+                customFields.style.display = 'none';
+            }
+        });
+        
+        // Handle mission duration slider
+        document.getElementById('missionDuration').addEventListener('input', function() {
+            document.getElementById('durationValue').textContent = this.value + 'h';
+        });
+        
+        // Handle start simulation button
+        document.getElementById('startSimulation').addEventListener('click', startMilitarySimulation);
+        
+        // Handle reset simulation button
+        document.getElementById('resetSimulation').addEventListener('click', resetMilitarySimulation);
+        
+        // Handle optimize load button
+        document.getElementById('optimizeLoad').addEventListener('click', optimizeEquipmentLoad);
+    });
+    
+    function initializeMilitaryMap() {
+        // Default coordinates (can be updated based on selected location)
+        let defaultLat = 33.9207;
+        let defaultLng = 35.5663;
+        
+        // Check if coordinates are stored or use defaults
+        const storedLat = localStorage.getItem('military_map_lat');
+        const storedLng = localStorage.getItem('military_map_lng');
+        if (storedLat && storedLng) {
+            defaultLat = parseFloat(storedLat);
+            defaultLng = parseFloat(storedLng);
+        }
+        
+        // Create map
+        const map = L.map('map', {
+            maxZoom: 18
+        }).setView([defaultLat, defaultLng], 12);
+        
+        // Add terrain layer
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        }).addTo(map);
+        
+        // Add terrain overlay
+        L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/terrain-lines/{z}/{x}/{y}{r}.png', {
+            subdomains: 'abcd',
+            attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            opacity: 0.5
+        }).addTo(map);
+        
+        // Default mission route
+        const missionRoute = generateDefaultRoute(defaultLat, defaultLng);
+        
+        // Add mission start point
+        L.marker([missionRoute[0][0], missionRoute[0][1]], {
+            icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#6f42c1;' class='marker-pin'></div><i class='fas fa-flag'></i>",
+                iconSize: [30, 42],
+                iconAnchor: [15, 42]
+            })
+        }).addTo(map).bindPopup('Mission Start Point');
+        
+        // Add mission end point
+        L.marker([missionRoute[missionRoute.length-1][0], missionRoute[missionRoute.length-1][1]], {
+            icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#dc3545;' class='marker-pin'></div><i class='fas fa-flag-checkered'></i>",
+                iconSize: [30, 42],
+                iconAnchor: [15, 42]
+            })
+        }).addTo(map).bindPopup('Mission End Point');
+        
+        // Add patrol route
+        const patrolRoute = L.polyline(missionRoute, {
+            color: '#6f42c1',
+            weight: 5,
+            opacity: 0.8,
+            dashArray: '10, 10'
+        }).addTo(map);
+        
+        // Add danger zone near the middle point
+        const midpointIndex = Math.floor(missionRoute.length / 2);
+        L.circle([missionRoute[midpointIndex][0], missionRoute[midpointIndex][1]], {
+            color: '#dc3545',
+            fillColor: '#dc3545',
+            fillOpacity: 0.2,
+            radius: 500
+        }).addTo(map).bindPopup('High Risk Area');
+        
+        // Store the map for later reference
+        window.militaryMap = map;
+        window.missionRoute = missionRoute;
+        
+        // Add listener for location change
+        document.getElementById('locationSelect').addEventListener('change', function() {
+            // Get location based on selection
+            const location = this.value;
+            
+            if (location !== 'custom') {
+                // Use predefined locations for non-custom options
+                updateMapLocation(location);
+            } else {
+                // Use custom coordinates if available
+                const latInput = document.getElementById('latitude');
+                const lngInput = document.getElementById('longitude');
+                
+                if (latInput.value && lngInput.value) {
+                    const lat = parseFloat(latInput.value);
+                    const lng = parseFloat(lngInput.value);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        updateMapLocation('custom', lat, lng);
+                    }
+                }
+            }
+        });
+        
+        // Add listeners for custom location inputs
+        document.getElementById('latitude').addEventListener('change', updateCustomLocation);
+        document.getElementById('longitude').addEventListener('change', updateCustomLocation);
+    }
+    
+    function generateDefaultRoute(centerLat, centerLng) {
+        // Generate a route with 5 points starting from center and going northeast
+        return [
+            [centerLat, centerLng],
+            [centerLat + 0.007, centerLng + 0.006],
+            [centerLat + 0.014, centerLng + 0.019],
+            [centerLat + 0.021, centerLng + 0.029],
+            [centerLat + 0.024, centerLng + 0.042]
+        ];
+    }
+    
+    function updateMapLocation(locationType, customLat = null, customLng = null) {
+        // Get map
+        const map = window.militaryMap;
+        if (!map) return;
+        
+        // Define coordinate sets for predefined locations
+        const locationCoordinates = {
+            'urban': [40.7128, -74.0060], // New York
+            'desert': [29.9792, 31.1342], // Cairo
+            'forest': [46.8182, 8.2275],  // Swiss Alps
+            'mountain': [27.9881, 86.9250] // Everest
+        };
+        
+        // Get coordinates based on location type
+        let lat, lng;
+        if (locationType === 'custom' && customLat !== null && customLng !== null) {
+            lat = customLat;
+            lng = customLng;
+        } else if (locationCoordinates[locationType]) {
+            [lat, lng] = locationCoordinates[locationType];
+        } else {
+            // Default to urban if unrecognized type
+            [lat, lng] = locationCoordinates['urban'];
+        }
+        
+        // Save to local storage
+        localStorage.setItem('military_map_lat', lat);
+        localStorage.setItem('military_map_lng', lng);
+        
+        // Update map center
+        map.setView([lat, lng], 12);
+        
+        // Update route
+        const newRoute = generateDefaultRoute(lat, lng);
+        
+        // Remove old markers and route
+        map.eachLayer(function(layer) {
+            if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.Circle) {
+                map.removeLayer(layer);
+            }
+        });
+        
+        // Add base map layer back if it was removed
+        if (!map.hasLayer(L.tileLayer)) {
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri'
+            }).addTo(map);
+            
+            L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/terrain-lines/{z}/{x}/{y}{r}.png', {
+                subdomains: 'abcd',
+                opacity: 0.5
+            }).addTo(map);
+        }
+        
+        // Add start point
+        L.marker([newRoute[0][0], newRoute[0][1]], {
+            icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#6f42c1;' class='marker-pin'></div><i class='fas fa-flag'></i>",
+                iconSize: [30, 42],
+                iconAnchor: [15, 42]
+            })
+        }).addTo(map).bindPopup('Mission Start Point');
+        
+        // Add end point
+        L.marker([newRoute[newRoute.length-1][0], newRoute[newRoute.length-1][1]], {
+            icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#dc3545;' class='marker-pin'></div><i class='fas fa-flag-checkered'></i>",
+                iconSize: [30, 42],
+                iconAnchor: [15, 42]
+            })
+        }).addTo(map).bindPopup('Mission End Point');
+        
+        // Add route line
+        L.polyline(newRoute, {
+            color: '#6f42c1',
+            weight: 5,
+            opacity: 0.8,
+            dashArray: '10, 10'
+        }).addTo(map);
+        
+        // Add danger zone near the middle point
+        const midpointIndex = Math.floor(newRoute.length / 2);
+        L.circle([newRoute[midpointIndex][0], newRoute[midpointIndex][1]], {
+            color: '#dc3545',
+            fillColor: '#dc3545',
+            fillOpacity: 0.2,
+            radius: 500
+        }).addTo(map).bindPopup('High Risk Area');
+        
+        // Update stored route
+        window.missionRoute = newRoute;
+    }
+    
+    function updateCustomLocation() {
+        const latInput = document.getElementById('latitude');
+        const lngInput = document.getElementById('longitude');
+        
+        if (latInput.value && lngInput.value) {
+            const lat = parseFloat(latInput.value);
+            const lng = parseFloat(lngInput.value);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                updateMapLocation('custom', lat, lng);
+            }
+        }
+    }
+    
+    function initializePerformanceChart() {
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        window.performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['0h', '4h', '8h', '12h', '16h', '20h', '24h'],
+                datasets: [
+                    {
+                        label: 'Operational Effectiveness',
+                        data: [100, 95, 90, 82, 75, 70, 65],
+                        borderColor: '#6f42c1',
+                        backgroundColor: 'rgba(111, 66, 193, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Fatigue Level',
+                        data: [0, 15, 25, 35, 45, 55, 70],
+                        borderColor: '#fd7e14',
+                        backgroundColor: 'rgba(253, 126, 20, 0.1)',
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: '#d4af37'
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#adb5bd'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#adb5bd'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateEquipmentLoadMeter() {
+        // Calculate total load based on selected equipment
+        let totalLoad = 0;
+        let selectedEquipment = document.querySelectorAll('.equipment-card.selected');
+        
+        selectedEquipment.forEach(item => {
+            const weightText = item.querySelector('small').textContent;
+            const weight = parseFloat(weightText.replace(' kg', ''));
+            totalLoad += weight;
+        });
+        
+        // Update the load meter
+        const maxLoad = parseFloat(document.getElementById('maxLoad').textContent.replace(' kg', ''));
+        const percentage = (totalLoad / maxLoad) * 100;
+        
+        document.getElementById('currentLoad').textContent = totalLoad.toFixed(1) + ' kg';
+        document.getElementById('loadPercentage').style.width = percentage + '%';
+        document.getElementById('loadPercentage').textContent = percentage.toFixed(0) + '%';
+        
+        // Update color based on load percentage
+        const loadBar = document.getElementById('loadPercentage');
+        if (percentage > 90) {
+            loadBar.className = 'progress-bar bg-danger';
+        } else if (percentage > 75) {
+            loadBar.className = 'progress-bar bg-warning';
+        } else {
+            loadBar.className = 'progress-bar bg-success';
+        }
+        
+        // Update operational effectiveness and fatigue based on load
+        const effectivenessElement = document.getElementById('operationalEffectiveness');
+        const fatigueElement = document.getElementById('currentFatigue');
+        
+        // Simple logic: effectiveness goes down as percentage goes up
+        const effectivenessValue = Math.max(50, Math.round(100 - percentage * 0.25));
+        const fatigueValue = Math.min(100, Math.round(percentage * 0.3));
+        
+        if (effectivenessElement) {
+            effectivenessElement.textContent = effectivenessValue + '%';
+        }
+        
+        if (fatigueElement) {
+            fatigueElement.textContent = fatigueValue + '%';
+        }
+        
+        // Return the load calculation for other functions to use
+        return {
+            totalLoad,
+            maxLoad,
+            percentage,
+            effectiveness: effectivenessValue,
+            fatigue: fatigueValue
+        };
+    }
+    
+    function startMilitarySimulation() {
+        // Update UI elements
+        document.getElementById('startSimulation').disabled = true;
+        document.getElementById('resetSimulation').disabled = false;
+        
+        // Update mission status
+        const missionStatus = document.querySelector('.mission-status .badge');
+        missionStatus.className = 'badge bg-success';
+        missionStatus.textContent = 'Active';
+        
+        // Start timer
+        startMissionTimer();
+        
+        // Update map with soldier position
+        updateSoldierPosition();
+        
+        // Show alert
+        const alertContainer = document.getElementById('alertContainer');
+        if (alertContainer) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-info alert-dismissible fade show medieval-alert';
+            alert.innerHTML = `
+                <strong>Mission Started</strong>: Simulation is now running. Monitor the tactical map for updates.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            alertContainer.appendChild(alert);
+        }
+    }
+    
+    function resetMilitarySimulation() {
+        // Reset UI elements
+        document.getElementById('startSimulation').disabled = false;
+        document.getElementById('resetSimulation').disabled = true;
+        
+        // Reset mission status
+        const missionStatus = document.querySelector('.mission-status .badge');
+        missionStatus.className = 'badge bg-warning';
+        missionStatus.textContent = 'Standby';
+        
+        // Reset timer
+        document.getElementById('missionTimer').textContent = '00:00:00';
+        if (window.missionTimerInterval) {
+            clearInterval(window.missionTimerInterval);
+        }
+        
+        // Reset map
+        if (window.soldierMarker && window.militaryMap) {
+            window.militaryMap.removeLayer(window.soldierMarker);
+        }
+        
+        // Reset chart
+        if (window.performanceChart) {
+            window.performanceChart.data.datasets[0].data = [100, 95, 90, 82, 75, 70, 65];
+            window.performanceChart.data.datasets[1].data = [0, 15, 25, 35, 45, 55, 70];
+            window.performanceChart.update();
+        }
+    }
+    
+    function startMissionTimer() {
+        let seconds = 0;
+        
+        // Clear any existing interval
+        if (window.missionTimerInterval) {
+            clearInterval(window.missionTimerInterval);
+        }
+        
+        // Start new interval
+        window.missionTimerInterval = setInterval(function() {
+            seconds++;
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            const timeString = 
+                String(hours).padStart(2, '0') + ':' +
+                String(minutes).padStart(2, '0') + ':' +
+                String(secs).padStart(2, '0');
+                
+            document.getElementById('missionTimer').textContent = timeString;
+            
+            // Update simulation every 10 seconds
+            if (seconds % 10 === 0) {
+                updateSoldierPosition();
+            }
+        }, 1000);
+    }
+    
+    function updateSoldierPosition() {
+        // Get route points from the global variable or define defaults
+        const routePoints = window.missionRoute || [
+            [33.9207, 35.5663],
+            [33.9280, 35.5720],
+            [33.9350, 35.5850],
+            [33.9420, 35.5950],
+            [33.9447, 35.6080]
+        ];
+        
+        // Calculate current position based on time
+        const missionTimer = document.getElementById('missionTimer').textContent;
+        const [hours, minutes, seconds] = missionTimer.split(':').map(Number);
+        const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+        
+        // Complete route in 120 seconds for demo
+        const progress = Math.min(totalSeconds / 120, 1);
+        
+        // Interpolate position
+        let currentPosition;
+        if (progress >= 1) {
+            currentPosition = routePoints[routePoints.length - 1];
+        } else {
+            const segment = Math.floor(progress * (routePoints.length - 1));
+            const segmentProgress = (progress * (routePoints.length - 1)) % 1;
+            
+            const start = routePoints[segment];
+            const end = routePoints[segment + 1];
+            
+            currentPosition = [
+                start[0] + (end[0] - start[0]) * segmentProgress,
+                start[1] + (end[1] - start[1]) * segmentProgress
+            ];
+        }
+        
+        // Update soldier marker on map
+        if (window.soldierMarker && window.militaryMap) {
+            window.militaryMap.removeLayer(window.soldierMarker);
+        }
+        
+        window.soldierMarker = L.marker(currentPosition, {
+            icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#198754;' class='marker-pin'></div><i class='fas fa-running'></i>",
+                iconSize: [30, 42],
+                iconAnchor: [15, 42]
+            })
+        }).addTo(window.militaryMap);
+        
+        // Pan map to current position
+        window.militaryMap.panTo(currentPosition);
+        
+        // Get equipment load information
+        const loadData = updateEquipmentLoadMeter();
+        
+        // Update performance metrics based on progress and equipment load
+        if (window.performanceChart) {
+            // Simulate increasing fatigue and decreasing effectiveness
+            const numPoints = window.performanceChart.data.labels.length;
+            const effectivenessData = [];
+            const fatigueData = [];
+            
+            // Base factors for effectiveness/fatigue based on load
+            const loadFactor = Math.max(0.5, 1 - loadData.percentage / 200); // 0.5 to 1.0
+            const fatigueFactor = Math.min(2.0, 1 + loadData.percentage / 100); // 1.0 to 2.0
+            
+            for (let i = 0; i < numPoints; i++) {
+                const pointProgress = i / (numPoints - 1);
+                
+                // Decrease effectiveness over time with variability based on equipment load
+                const baseEffectiveness = 100 - (50 * pointProgress * fatigueFactor);
+                const effectiveness = baseEffectiveness * loadFactor;
+                effectivenessData.push(Math.max(0, Math.round(effectiveness)));
+                
+                // Increase fatigue over time with variability based on equipment load
+                const baseFatigue = 100 * pointProgress * fatigueFactor;
+                const fatigue = baseFatigue / loadFactor;
+                fatigueData.push(Math.min(100, Math.round(fatigue)));
+            }
+            
+            window.performanceChart.data.datasets[0].data = effectivenessData;
+            window.performanceChart.data.datasets[1].data = fatigueData;
+            window.performanceChart.update();
+            
+            // Update current values
+            const currentIndex = Math.min(numPoints - 1, Math.floor(progress * numPoints));
+            document.getElementById('operationalEffectiveness').textContent = effectivenessData[currentIndex] + '%';
+            document.getElementById('currentFatigue').textContent = fatigueData[currentIndex] + '%';
+        }
+    }
+    
+    function optimizeEquipmentLoad() {
+        // Simulate optimization with animation
+        const alertContainer = document.getElementById('alertContainer');
+        if (alertContainer) {
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-info alert-dismissible fade show medieval-alert';
+            alert.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    <strong>Optimizing equipment load...</strong>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            alertContainer.appendChild(alert);
+        }
+        
+        // Show quantum component if quantum mode is enabled
+        const quantumToggle = document.getElementById('quantumToggle');
+        const quantumCircuitContainer = document.getElementById('quantumCircuitContainer');
+        
+        if (quantumToggle && quantumToggle.checked && quantumCircuitContainer) {
+            quantumCircuitContainer.style.display = 'block';
+        }
+        
+        // Get soldier profile
+        const soldierId = document.getElementById('soldierSelect').value;
+        
+        // Get selected equipment items
+        const selectedItems = Array.from(document.querySelectorAll('.equipment-card.selected')).map(card => {
+            const itemId = parseInt(card.dataset.id);
+            const name = card.querySelector('.card-title').textContent;
+            const weight = parseFloat(card.querySelector('small').textContent.replace(' kg', ''));
+            return { id: itemId, name, weight };
+        });
+        
+        // Get soldier weight (using a default if not available)
+        let baseWeight = 70.0; // Default soldier weight
+        
+        // Prepare equipment analysis request
+        fetch('/api/simulation/equipment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                base_weight: baseWeight,
+                equipment_items: selectedItems
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Remove the processing alert
+            if (alertContainer) {
+                const processingAlert = alertContainer.querySelector('.alert');
+                if (processingAlert) {
+                    processingAlert.remove();
+                }
+            }
+            
+            // Apply optimization results
+            document.querySelectorAll('.equipment-card').forEach(card => {
+                const cardName = card.querySelector('.card-title').textContent;
+                
+                // Check if this item is in recommendations (simplified logic)
+                const isEssential = card.classList.contains('essential');
+                const isOverloaded = data.is_overloaded;
+                const isHeavy = parseFloat(card.querySelector('small').textContent) > 3.0;
+                
+                if (isEssential || (!isOverloaded) || (!isHeavy)) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+            
+            // Update load meter
+            updateEquipmentLoadMeter();
+            
+            // Show recommendations
+            if (alertContainer) {
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success alert-dismissible fade show medieval-alert';
+                
+                // Build recommendations text
+                let recommendationsHtml = '';
+                if (data.recommendations && data.recommendations.length > 0) {
+                    recommendationsHtml = '<ul class="mb-0 mt-2">';
+                    data.recommendations.forEach(rec => {
+                        recommendationsHtml += `<li>${rec}</li>`;
+                    });
+                    recommendationsHtml += '</ul>';
+                }
+                
+                alert.innerHTML = `
+                    <strong>Equipment Optimized</strong>: Load ${data.is_overloaded ? 'reduced' : 'optimized'} to ${data.load_classification.replace('_', ' ')}.
+                    ${recommendationsHtml}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                alertContainer.appendChild(alert);
+                
+                // Auto-dismiss after 5 seconds
+                setTimeout(() => {
+                    alert.classList.remove('show');
+                    setTimeout(() => alert.remove(), 300);
+                }, 5000);
+            }
+        })
+        .catch(error => {
+            console.error('Error optimizing equipment:', error);
+            
+            // Fallback to client-side optimization if API fails
+            setTimeout(() => {
+                // Remove the processing alert
+                if (alertContainer) {
+                    const processingAlert = alertContainer.querySelector('.alert');
+                    if (processingAlert) {
+                        processingAlert.remove();
+                    }
+                }
+                
+                // Select optimal equipment (essentials only)
+                document.querySelectorAll('.equipment-card').forEach(card => {
+                    const isEssential = card.classList.contains('essential');
+                    if (isEssential) {
+                        card.classList.add('selected');
+                    } else {
+                        card.classList.remove('selected');
+                    }
+                });
+                
+                // Update load meter
+                updateEquipmentLoadMeter();
+                
+                // Show success alert
+                if (alertContainer) {
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success alert-dismissible fade show medieval-alert';
+                    alert.innerHTML = `
+                        <strong>Equipment Optimized</strong>: Load reduced to essential items only.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    alertContainer.appendChild(alert);
+                    
+                    // Auto-dismiss after 3 seconds
+                    setTimeout(() => {
+                        alert.classList.remove('show');
+                        setTimeout(() => alert.remove(), 300);
+                    }, 3000);
+                }
+            }, 2000);
+        });
+    }
+</script>
+{% endblock %} 

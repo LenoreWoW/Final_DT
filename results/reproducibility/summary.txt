@@ -1,0 +1,29 @@
+REPRODUCIBILITY VALIDATION SUMMARY
+=================================
+
+Validation completed at: 2025-04-19 23:54:20
+Total execution time: 2.50 seconds
+
+Monte Carlo Reproducibility:
+---------------------------
+Coefficient of Variation (CV) of mean:
+  Quantum: 4.19%
+  Classical: 1.44%
+
+Maximum deviation from mean:
+  Quantum: 0.025697
+  Classical: 0.009225
+
+Quantum is Less reproducible than classical (ratio: 2.90)
+
+Quantum Machine Learning Reproducibility:
+---------------------------------------
+CV of MSE: 32.96%
+CV of R²: 10.01%
+
+Overall Assessment:
+------------------
+- Quantum Monte Carlo shows LOWER reproducibility than classical methods
+- Quantum ML shows LOW reproducibility (CV >= 20%)
+
+Detailed results and plots are available in the results directory.
