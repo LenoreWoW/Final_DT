@@ -1,149 +1,192 @@
 """
-Classical Monte Carlo Module for comparison with quantum methods.
+Classical Monte Carlo simulation module.
+
+This module provides classical Monte Carlo simulation capabilities for comparison
+with quantum Monte Carlo methods.
 """
 
 import numpy as np
-import logging
 import time
-from typing import Dict, List, Tuple, Optional, Callable, Union, Any
-
-from dt_project.config import ConfigManager
+import logging
 
 logger = logging.getLogger(__name__)
 
 class ClassicalMonteCarlo:
-    """
-    Classical Monte Carlo simulation for comparison with quantum methods.
-    """
+    """Classical Monte Carlo simulation for integration and optimization tasks."""
     
     def __init__(self, config=None):
-        """
-        Initialize classical Monte Carlo simulator.
+        """Initialize the classical Monte Carlo simulator.
         
         Args:
-            config: Configuration manager (optional)
+            config: Optional configuration manager instance
         """
-        self.config = config or ConfigManager()
+        self.config = config
+        self.iterations = 1000
+        self.dimensions = 2
+        self.distribution = "uniform"
+        self.available_distributions = {
+            "uniform": self._uniform_distribution,
+            "normal": self._normal_distribution,
+            "exponential": self._exponential_distribution,
+            "beta": self._beta_distribution
+        }
+        logger.info("Classical Monte Carlo simulator initialized")
     
-    def integrate_2d(self, target_function, x_min, x_max, y_min, y_max, 
-                    iterations=1000, distribution="uniform"):
+    def is_available(self):
+        """Check if classical Monte Carlo is available.
+        
+        Returns:
+            bool: Always True since classical methods are always available
         """
-        Perform classical Monte Carlo integration in 2D.
+        return True
+    
+    def _uniform_distribution(self, param_ranges, samples):
+        """Generate uniform random samples within parameter ranges.
         
         Args:
-            target_function: Function to integrate
-            x_min, x_max: Bounds for x
-            y_min, y_max: Bounds for y
-            iterations: Number of random samples to use
-            distribution: Type of distribution to use
+            param_ranges (dict): Dictionary mapping parameter names to (min, max) tuples
+            samples (int): Number of samples to generate
             
         Returns:
-            Dictionary with results including mean and standard error
+            dict: Dictionary mapping parameter names to arrays of random values
         """
+        result = {}
+        for param, (min_val, max_val) in param_ranges.items():
+            result[param] = np.random.uniform(min_val, max_val, samples)
+        return result
+    
+    def _normal_distribution(self, param_ranges, samples):
+        """Generate normally distributed random samples within parameter ranges.
+        
+        Args:
+            param_ranges (dict): Dictionary mapping parameter names to (mean, std) tuples
+            samples (int): Number of samples to generate
+            
+        Returns:
+            dict: Dictionary mapping parameter names to arrays of random values
+        """
+        result = {}
+        for param, (mean, std) in param_ranges.items():
+            result[param] = np.random.normal(mean, std, samples)
+        return result
+    
+    def _exponential_distribution(self, param_ranges, samples):
+        """Generate exponentially distributed random samples.
+        
+        Args:
+            param_ranges (dict): Dictionary mapping parameter names to (scale) tuples
+            samples (int): Number of samples to generate
+            
+        Returns:
+            dict: Dictionary mapping parameter names to arrays of random values
+        """
+        result = {}
+        for param, (scale,) in param_ranges.items():
+            result[param] = np.random.exponential(scale, samples)
+        return result
+    
+    def _beta_distribution(self, param_ranges, samples):
+        """Generate beta distributed random samples.
+        
+        Args:
+            param_ranges (dict): Dictionary mapping parameter names to (alpha, beta) tuples
+            samples (int): Number of samples to generate
+            
+        Returns:
+            dict: Dictionary mapping parameter names to arrays of random values
+        """
+        result = {}
+        for param, (alpha, beta) in param_ranges.items():
+            result[param] = np.random.beta(alpha, beta, samples)
+        return result
+    
+    def integrate(self, target_function, param_ranges, distribution="uniform", iterations=None):
+        """Perform Monte Carlo integration on the target function.
+        
+        Args:
+            target_function (callable): Function to integrate
+            param_ranges (dict): Dictionary mapping parameter names to ranges
+            distribution (str): Distribution to use for sampling
+            iterations (int, optional): Number of iterations to use
+            
+        Returns:
+            dict: Dictionary containing mean, standard error, and other statistics
+        """
+        if iterations is None:
+            iterations = self.iterations
+        
+        if distribution not in self.available_distributions:
+            raise ValueError(f"Distribution '{distribution}' not supported. Available: {list(self.available_distributions.keys())}")
+        
+        # Start time measurement
         start_time = time.time()
         
-        # Generate random points according to distribution
-        if distribution == "uniform":
-            x_samples = np.random.uniform(x_min, x_max, iterations)
-            y_samples = np.random.uniform(y_min, y_max, iterations)
-        elif distribution == "normal":
-            # For normal distribution, we need to scale appropriately
-            x_center = (x_max + x_min) / 2
-            y_center = (y_max + y_min) / 2
-            x_scale = (x_max - x_min) / 6  # 3 sigma on each side
-            y_scale = (y_max - y_min) / 6
+        # Generate random samples
+        samples = self.available_distributions[distribution](param_ranges, iterations)
+        
+        # Compute function values
+        param_names = list(samples.keys())
+        function_values = np.zeros(iterations)
+        
+        for i in range(iterations):
+            args = [samples[param][i] for param in param_names]
             
-            x_samples = np.random.normal(x_center, x_scale, iterations)
-            y_samples = np.random.normal(y_center, y_scale, iterations)
-            
-            # Clip to bounds
-            x_samples = np.clip(x_samples, x_min, x_max)
-            y_samples = np.clip(y_samples, y_min, y_max)
-        else:
-            # Default to uniform
-            x_samples = np.random.uniform(x_min, x_max, iterations)
-            y_samples = np.random.uniform(y_min, y_max, iterations)
+            try:
+                if len(args) == 1:
+                    function_values[i] = target_function(args[0])
+                else:
+                    function_values[i] = target_function(*args)
+            except Exception as e:
+                logger.error(f"Error evaluating function at {args}: {str(e)}")
+                function_values[i] = np.nan
         
-        # Evaluate function at each point
-        values = np.array([target_function(x, y) for x, y in zip(x_samples, y_samples)])
+        # Filter out NaN values
+        valid_indices = ~np.isnan(function_values)
+        valid_function_values = function_values[valid_indices]
         
-        # Calculate the area of the integration region
-        area = (x_max - x_min) * (y_max - y_min)
+        # If all values are NaN, return NaN results
+        if len(valid_function_values) == 0:
+            return {
+                "mean": np.nan,
+                "std": np.nan,
+                "sem": np.nan,
+                "confidence_interval": (np.nan, np.nan),
+                "valid_samples": 0,
+                "total_samples": iterations,
+                "execution_time": time.time() - start_time
+            }
         
-        # Scale the results by the area
-        scaled_values = values * area
+        # Compute statistics
+        mean = np.mean(valid_function_values)
+        std = np.std(valid_function_values)
+        sem = std / np.sqrt(len(valid_function_values))
         
-        # Calculate statistics
-        mean = np.mean(scaled_values)
-        std = np.std(scaled_values)
-        std_error = std / np.sqrt(iterations)
+        # Compute confidence interval (95%)
+        confidence_interval = (mean - 1.96 * sem, mean + 1.96 * sem)
         
+        # End time measurement
         execution_time = time.time() - start_time
         
         return {
-            'mean': mean,
-            'std': std,
-            'std_error': std_error,
-            'min': np.min(scaled_values),
-            'max': np.max(scaled_values),
-            'execution_time': execution_time
+            "mean": mean,
+            "std": std,
+            "sem": sem,
+            "confidence_interval": confidence_interval,
+            "valid_samples": len(valid_function_values),
+            "total_samples": iterations,
+            "execution_time": execution_time
         }
     
-    def run_classical_monte_carlo(self, param_ranges, target_function, iterations=1000, distribution="uniform"):
-        """
-        Run classical Monte Carlo simulation for parameter sampling.
-        Compatible with the QuantumMonteCarlo interface.
+    def run_classical_monte_carlo(self, param_ranges, iterations, target_function, distribution="uniform"):
+        """Run a classical Monte Carlo simulation.
         
         Args:
-            param_ranges: Dictionary mapping parameter names to (min, max) tuples
-            target_function: Function to evaluate at each sampled point
-            iterations: Number of iterations to run
-            distribution: Type of distribution to use
+            param_ranges (dict): Dictionary mapping parameter names to ranges
+            iterations (int): Number of iterations to use
+            target_function (callable): Function to evaluate
+            distribution (str): Distribution to use for sampling
             
         Returns:
-            Dictionary with results and statistics
+            dict: Dictionary containing mean, standard error, and other statistics
         """
-        start_time = time.time()
-        
-        param_names = list(param_ranges.keys())
-        param_samples = {name: [] for name in param_names}
-        values = []
-        
-        for _ in range(iterations):
-            params = {}
-            for param_name in param_names:
-                min_val, max_val = param_ranges[param_name]
-                if distribution == "uniform":
-                    param_value = np.random.uniform(min_val, max_val)
-                elif distribution == "normal":
-                    center = (min_val + max_val) / 2
-                    scale = (max_val - min_val) / 6
-                    param_value = np.random.normal(center, scale)
-                    param_value = np.clip(param_value, min_val, max_val)
-                else:
-                    # Default to uniform
-                    param_value = np.random.uniform(min_val, max_val)
-                    
-                params[param_name] = param_value
-                param_samples[param_name].append(param_value)
-            
-            # Evaluate target function if provided
-            if target_function:
-                result_value = target_function(**params)
-                values.append(result_value)
-        
-        results = {
-            'param_samples': param_samples,
-            'execution_time': time.time() - start_time,
-            'backend': 'classical',
-            'quantum': False
-        }
-        
-        if target_function:
-            results['values'] = values
-            results['mean'] = np.mean(values)
-            results['std'] = np.std(values)
-            results['min'] = np.min(values)
-            results['max'] = np.max(values)
-        
-        return results 
+        return self.integrate(target_function, param_ranges, distribution, iterations) 

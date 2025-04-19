@@ -3,56 +3,31 @@
 
 set -e  # Exit on error
 
-echo "========================================"
-echo "Quantum Reproducibility Setup and Runner"
-echo "========================================"
-echo
+echo "========================="
+echo "Quantum Reproducibility Test"
+echo "========================="
 
-# Check if we're in a virtual environment
-if [ -z "$VIRTUAL_ENV" ]; then
-    echo "Not currently in a virtual environment."
-    
-    # Check if quantum_env exists
-    if [ -d "quantum_env" ]; then
-        echo "Activating existing quantum_env virtual environment..."
-        source quantum_env/bin/activate
-    else
-        echo "Creating new quantum_env virtual environment..."
-        python3 -m venv quantum_env
-        source quantum_env/bin/activate
-        
-        echo "Installing required packages..."
-        pip install qiskit pennylane scikit-learn
-    fi
+# Check if virtual environment exists
+if [ -d "quantum_env" ]; then
+    echo "Using existing quantum_env..."
+    source quantum_env/bin/activate
 else
-    echo "Already in virtual environment: $VIRTUAL_ENV"
+    echo "Creating new virtual environment..."
+    python -m venv quantum_env
+    source quantum_env/bin/activate
+    
+    echo "Installing required packages..."
+    pip install --upgrade pip
+    pip install qiskit qiskit_aer pennylane scikit-learn numpy matplotlib
 fi
 
-# Try to import required packages
-echo "Checking for required packages..."
-python3 -c "import qiskit; import pennylane; import sklearn; print('All required packages are installed.')" || {
-    echo "Installing missing packages..."
-    pip install qiskit pennylane scikit-learn
-}
+# Make the Python script executable
+chmod +x run_quantum_reproduction.py
 
-# Update config to enable quantum features
-echo "Enabling quantum features in configuration..."
-python3 quantum_enable.py
+# Run the validator
+echo "Running the Quantum Reproducibility Validator..."
+python run_quantum_reproduction.py
 
-# Patch the reproducibility validator
-echo "Patching the reproducibility validator..."
-python3 quantum_validator_patch.py
-
-# Set environment variable for development environment
-export FLASK_ENV=development
-
-# Run the reproducibility validator
-echo
-echo "========================================"
-echo "Running Reproducibility Validator"
-echo "========================================"
-python3 scripts/reproducibility_validator.py
-
-echo
-echo "Results are saved in the results/reproducibility directory."
-echo "You can view the summary at results/reproducibility/summary.txt" 
+echo ""
+echo "If the test was successful, results are saved in results/reproducibility/"
+echo "To view the summary: cat results/reproducibility/summary.txt" 

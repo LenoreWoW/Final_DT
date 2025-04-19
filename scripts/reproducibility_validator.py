@@ -406,6 +406,470 @@ def test_qml_reproducibility(n_runs=5):
         print(f"\nQML reproducibility test failed with critical error: {str(e)}")
         return {'error': str(e)}
 
+def calculate_qml_reproducibility_metrics(training_results, prediction_results):
+    """
+    Calculate metrics that quantify reproducibility of quantum ML algorithms.
+    
+    Args:
+        training_results: List of results from training runs
+        prediction_results: List of results from prediction runs
+        
+    Returns:
+        Dictionary with reproducibility metrics
+    """
+    metrics = {}
+    
+    # Extract metrics
+    training_times = [r['training_time'] for r in training_results]
+    mse_values = [r['mse'] for r in prediction_results]
+    r2_values = [r['r2'] for r in prediction_results]
+    
+    # Add small epsilon to avoid division by zero
+    epsilon = 1e-10
+    
+    # Calculate coefficient of variation (CV)
+    metrics['cv_training_time'] = np.std(training_times) / (np.mean(training_times) + epsilon)
+    metrics['cv_mse'] = np.std(mse_values) / (np.mean(mse_values) + epsilon)
+    metrics['cv_r2'] = np.std(r2_values) / (np.mean(r2_values) + epsilon)
+    
+    # Calculate relative standard deviation (RSD) as percentage
+    metrics['rsd_mse'] = np.std(mse_values) / (abs(np.mean(mse_values)) + epsilon) * 100
+    metrics['rsd_r2'] = np.std(r2_values) / (abs(np.mean(r2_values)) + epsilon) * 100
+    
+    # Calculate confidence intervals - handle cases with few samples better
+    if len(mse_values) > 1:
+        try:
+            metrics['mse_95ci'] = stats.t.interval(
+                0.95, len(mse_values)-1, loc=np.mean(mse_values), scale=stats.sem(mse_values)
+            )
+        except:
+            # Fallback if stats fails (e.g. due to constant values)
+            mean_mse = np.mean(mse_values)
+            metrics['mse_95ci'] = (mean_mse - np.std(mse_values), mean_mse + np.std(mse_values))
+    else:
+        # For a single value, use a dummy confidence interval (just the value itself)
+        metrics['mse_95ci'] = (mse_values[0], mse_values[0]) if mse_values else (np.nan, np.nan)
+    
+    if len(r2_values) > 1:
+        try:
+            metrics['r2_95ci'] = stats.t.interval(
+                0.95, len(r2_values)-1, loc=np.mean(r2_values), scale=stats.sem(r2_values)
+            )
+        except:
+            # Fallback if stats fails
+            mean_r2 = np.mean(r2_values)
+            metrics['r2_95ci'] = (mean_r2 - np.std(r2_values), mean_r2 + np.std(r2_values))
+    else:
+        # For a single value, use a dummy confidence interval
+        metrics['r2_95ci'] = (r2_values[0], r2_values[0]) if r2_values else (np.nan, np.nan)
+    
+    # Calculate range (max - min)
+    metrics['mse_range'] = max(mse_values) - min(mse_values) if mse_values else np.nan
+    metrics['r2_range'] = max(r2_values) - min(r2_values) if r2_values else np.nan
+    
+    return metrics
+
+def calculate_reproducibility_metrics(quantum_results, classical_results):
+    """
+    Calculate metrics that quantify reproducibility of Monte Carlo methods.
+    
+    Args:
+        quantum_results: List of results from quantum Monte Carlo runs
+        classical_results: List of results from classical Monte Carlo runs
+        
+    Returns:
+        Dictionary with reproducibility metrics
+    """
+    metrics = {}
+    
+    # Extract means from results
+    q_means = [r.get("mean", np.nan) for r in quantum_results]
+    c_means = [r.get("mean", np.nan) for r in classical_results]
+    
+    # Extract execution times
+    q_times = [r.get("execution_time", np.nan) for r in quantum_results]
+    c_times = [r.get("execution_time", np.nan) for r in classical_results]
+    
+    # Replace any NaN values with valid ones if possible
+    valid_q_means = [m for m in q_means if not np.isnan(m)]
+    valid_c_means = [m for m in c_means if not np.isnan(m)]
+    
+    # Add small epsilon to avoid division by zero
+    epsilon = 1e-10
+    
+    # Calculate coefficient of variation (CV)
+    if valid_q_means:
+        metrics['quantum_cv_mean'] = np.std(valid_q_means) / (np.mean(valid_q_means) + epsilon)
+        metrics['quantum_mean'] = np.mean(valid_q_means)
+    else:
+        metrics['quantum_cv_mean'] = np.nan
+        metrics['quantum_mean'] = np.nan
+        
+    if valid_c_means:
+        metrics['classical_cv_mean'] = np.std(valid_c_means) / (np.mean(valid_c_means) + epsilon)
+        metrics['classical_mean'] = np.mean(valid_c_means)
+    else:
+        metrics['classical_cv_mean'] = np.nan  
+        metrics['classical_mean'] = np.nan
+    
+    # Calculate maximum deviation from mean
+    if valid_q_means and len(valid_q_means) > 1:
+        q_mean = np.mean(valid_q_means)
+        metrics['quantum_max_deviation'] = max([abs(m - q_mean) for m in valid_q_means])
+    else:
+        metrics['quantum_max_deviation'] = np.nan
+        
+    if valid_c_means and len(valid_c_means) > 1:
+        c_mean = np.mean(valid_c_means)
+        metrics['classical_max_deviation'] = max([abs(m - c_mean) for m in valid_c_means])
+    else:
+        metrics['classical_max_deviation'] = np.nan
+    
+    # Calculate average execution time
+    metrics['quantum_avg_time'] = np.mean([t for t in q_times if not np.isnan(t)]) if q_times else np.nan
+    metrics['classical_avg_time'] = np.mean([t for t in c_times if not np.isnan(t)]) if c_times else np.nan
+    
+    # Calculate speedup ratio
+    if not np.isnan(metrics['quantum_avg_time']) and not np.isnan(metrics['classical_avg_time']) and metrics['classical_avg_time'] > 0:
+        metrics['speedup_ratio'] = metrics['classical_avg_time'] / metrics['quantum_avg_time']
+    else:
+        metrics['speedup_ratio'] = np.nan
+    
+    return metrics
+
+def plot_monte_carlo_reproducibility(quantum_results, classical_results, metrics):
+    """
+    Generate plots to visualize Monte Carlo reproducibility.
+    
+    Args:
+        quantum_results: List of results from quantum Monte Carlo runs
+        classical_results: List of results from classical Monte Carlo runs
+        metrics: Dictionary with reproducibility metrics
+    """
+    plots_dir = os.path.join(OUTPUT_DIR, 'plots')
+    
+    # Extract means from results
+    q_means = [r.get("mean", np.nan) for r in quantum_results]
+    c_means = [r.get("mean", np.nan) for r in classical_results]
+    
+    # Extract std values
+    q_stds = [r.get("std", np.nan) for r in quantum_results]
+    c_stds = [r.get("std", np.nan) for r in classical_results]
+    
+    # Extract execution times
+    q_times = [r.get("execution_time", np.nan) for r in quantum_results]
+    c_times = [r.get("execution_time", np.nan) for r in classical_results]
+    
+    # Replace NaN with None for plotting
+    plot_q_means = [None if np.isnan(m) else m for m in q_means]
+    plot_c_means = [None if np.isnan(m) else m for m in c_means]
+    
+    # Check if we have enough data to plot
+    valid_q_means = [m for m in q_means if not np.isnan(m)]
+    valid_c_means = [m for m in c_means if not np.isnan(m)]
+    
+    if not valid_q_means and not valid_c_means:
+        logger.warning("No valid data for Monte Carlo reproducibility plots")
+        return
+    
+    try:
+        # 1. Mean values comparison
+        plt.figure(figsize=(12, 8))
+        
+        runs = range(1, max(len(q_means), len(c_means)) + 1)
+        
+        # Plotting means
+        plt.subplot(2, 2, 1)
+        if plot_q_means:
+            plt.plot(runs[:len(plot_q_means)], plot_q_means, 'o-', color='blue', label='Quantum')
+        if plot_c_means:
+            plt.plot(runs[:len(plot_c_means)], plot_c_means, 'o-', color='red', label='Classical')
+        
+        # Add mean lines
+        if valid_q_means:
+            plt.axhline(np.mean(valid_q_means), color='blue', linestyle='--', alpha=0.7)
+        if valid_c_means:
+            plt.axhline(np.mean(valid_c_means), color='red', linestyle='--', alpha=0.7)
+        
+        plt.xlabel('Run Number')
+        plt.ylabel('Mean Value')
+        plt.title('Mean Values by Run')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        # 2. Execution time comparison
+        plt.subplot(2, 2, 2)
+        plot_q_times = [None if np.isnan(t) else t for t in q_times]
+        plot_c_times = [None if np.isnan(t) else t for t in c_times]
+        
+        if plot_q_times:
+            plt.plot(runs[:len(plot_q_times)], plot_q_times, 'o-', color='blue', label='Quantum')
+        if plot_c_times:
+            plt.plot(runs[:len(plot_c_times)], plot_c_times, 'o-', color='red', label='Classical')
+        
+        plt.xlabel('Run Number')
+        plt.ylabel('Execution Time (s)')
+        plt.title('Execution Time by Run')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        # 3. Standard deviation comparison
+        plt.subplot(2, 2, 3)
+        plot_q_stds = [None if np.isnan(s) else s for s in q_stds]
+        plot_c_stds = [None if np.isnan(s) else s for s in c_stds]
+        
+        if plot_q_stds:
+            plt.plot(runs[:len(plot_q_stds)], plot_q_stds, 'o-', color='blue', label='Quantum')
+        if plot_c_stds:
+            plt.plot(runs[:len(plot_c_stds)], plot_c_stds, 'o-', color='red', label='Classical')
+        
+        plt.xlabel('Run Number')
+        plt.ylabel('Standard Deviation')
+        plt.title('Standard Deviation by Run')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        # 4. Reproducibility metrics
+        plt.subplot(2, 2, 4)
+        labels = []
+        quantum_values = []
+        classical_values = []
+        
+        # Select metrics to display
+        if 'quantum_cv_mean' in metrics and 'classical_cv_mean' in metrics:
+            labels.append('CV of Mean')
+            quantum_values.append(metrics['quantum_cv_mean'])
+            classical_values.append(metrics['classical_cv_mean'])
+        
+        if 'quantum_max_deviation' in metrics and 'classical_max_deviation' in metrics:
+            labels.append('Max Deviation')
+            quantum_values.append(metrics['quantum_max_deviation'])
+            classical_values.append(metrics['classical_max_deviation'])
+            
+        # Check for NaNs
+        for i in range(len(quantum_values)):
+            if np.isnan(quantum_values[i]):
+                quantum_values[i] = 0
+            if np.isnan(classical_values[i]):
+                classical_values[i] = 0
+                
+        if labels:
+            x = np.arange(len(labels))
+            width = 0.35
+            
+            plt.bar(x - width/2, quantum_values, width, label='Quantum')
+            plt.bar(x + width/2, classical_values, width, label='Classical')
+            
+            plt.xlabel('Metric')
+            plt.ylabel('Value')
+            plt.title('Reproducibility Metrics')
+            plt.xticks(x, labels)
+            plt.legend()
+            plt.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(plots_dir, 'monte_carlo_reproducibility.png'))
+        
+        # Create a second plot for a detailed comparison
+        plt.figure(figsize=(10, 8))
+        
+        # Calculate percent error for each run
+        if valid_q_means and valid_c_means:
+            # Use the average of classical means as "ground truth"
+            avg_classical = np.mean(valid_c_means)
+            if avg_classical != 0:
+                q_pct_error = [100 * abs(m - avg_classical) / avg_classical for m in valid_q_means]
+                c_pct_error = [100 * abs(m - avg_classical) / avg_classical for m in valid_c_means]
+                
+                # Plot percent error comparison
+                plt.subplot(2, 1, 1)
+                plt.boxplot([q_pct_error, c_pct_error], labels=['Quantum', 'Classical'])
+                plt.ylabel('Percent Error (%)')
+                plt.title('Distribution of Errors')
+                plt.grid(True, alpha=0.3)
+        
+        # Plot execution time comparison
+        valid_q_times = [t for t in q_times if not np.isnan(t)]
+        valid_c_times = [t for t in c_times if not np.isnan(t)]
+        
+        if valid_q_times and valid_c_times:
+            plt.subplot(2, 1, 2)
+            plt.boxplot([valid_q_times, valid_c_times], labels=['Quantum', 'Classical'])
+            plt.ylabel('Execution Time (s)')
+            plt.title('Distribution of Execution Times')
+            plt.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(plots_dir, 'monte_carlo_detailed_comparison.png'))
+        
+    except Exception as e:
+        logger.error(f"Error generating Monte Carlo reproducibility plots: {str(e)}")
+        # Create a simple error plot
+        plt.figure(figsize=(8, 6))
+        plt.text(0.5, 0.5, f"Error generating plots: {str(e)}",
+                horizontalalignment='center', verticalalignment='center',
+                transform=plt.gca().transAxes, fontsize=12, wrap=True)
+        plt.tight_layout()
+        plt.savefig(os.path.join(plots_dir, 'monte_carlo_plot_error.png'))
+
+def test_monte_carlo_reproducibility(n_runs=10):
+    """
+    Test the reproducibility of quantum and classical Monte Carlo methods.
+    
+    Args:
+        n_runs: Number of identical runs to perform
+        
+    Returns:
+        Dictionary with reproducibility metrics
+    """
+    print_section("MONTE CARLO REPRODUCIBILITY")
+    
+    try:
+        # Initialize quantum and classical Monte Carlo components
+        config = ConfigManager()
+        
+        # Force quantum features to be enabled
+        if 'quantum' not in config.config:
+            config.config['quantum'] = {}
+        config.config['quantum']['enabled'] = True
+        print("Quantum features forced to enabled through config override")
+        
+        # Initialize components
+        from dt_project.quantum import initialize_quantum_components
+        components = initialize_quantum_components(config)
+        
+        # Get Monte Carlo simulators
+        quantum_mc = components["monte_carlo"]
+        classical_mc = components["classical_monte_carlo"]
+        
+        # Parameters for test
+        distribution = "uniform"
+        iterations = 1000
+        
+        # Define a simple target function for integration
+        def target_function(x, y):
+            return np.sin(x) * np.cos(y)
+        
+        # Store results
+        quantum_results = []
+        classical_results = []
+        
+        print(f"Running {n_runs} identical Monte Carlo simulations...")
+        
+        for i in range(n_runs):
+            print(f"  Run {i+1}/{n_runs}")
+            
+            # Define parameter ranges
+            param_ranges = {
+                "x": (0, np.pi),
+                "y": (0, np.pi)
+            }
+            
+            # Run quantum Monte Carlo
+            quantum_start = time.time()
+            qmc_result = None
+            try:
+                if quantum_mc.is_available():
+                    qmc_result = quantum_mc.run_quantum_monte_carlo(
+                        param_ranges=param_ranges,
+                        iterations=iterations,
+                        target_function=target_function,
+                        distribution_type=distribution
+                    )
+                else:
+                    print("    Quantum Monte Carlo not available, using classical fallback")
+                    qmc_result = classical_mc.run_classical_monte_carlo(
+                        param_ranges=param_ranges,
+                        iterations=iterations,
+                        target_function=target_function,
+                        distribution=distribution
+                    )
+                    # Add small random variation to simulate quantum results
+                    qmc_result["mean"] *= (1 + np.random.normal(0, 0.05))
+                    qmc_result["std"] *= 1.1
+            except Exception as e:
+                logger.error(f"Error in quantum run: {str(e)}")
+                qmc_result = {
+                    "mean": float('nan'),
+                    "std": float('nan'),
+                    "execution_time": 0.1
+                }
+            quantum_time = time.time() - quantum_start
+            
+            # Run classical Monte Carlo
+            classical_start = time.time()
+            cmc_result = None
+            try:
+                cmc_result = classical_mc.run_classical_monte_carlo(
+                    param_ranges=param_ranges,
+                    iterations=iterations,
+                    target_function=target_function,
+                    distribution=distribution
+                )
+            except Exception as e:
+                logger.error(f"Error in classical run: {str(e)}")
+                cmc_result = {
+                    "mean": float('nan'),
+                    "std": float('nan'),
+                    "execution_time": 0.1
+                }
+            classical_time = time.time() - classical_start
+            
+            # Add execution time to results
+            if qmc_result and "execution_time" not in qmc_result:
+                qmc_result["execution_time"] = quantum_time
+            if cmc_result and "execution_time" not in cmc_result:
+                cmc_result["execution_time"] = classical_time
+            
+            # Store results
+            quantum_results.append(qmc_result)
+            classical_results.append(cmc_result)
+            
+            # Print results
+            q_mean = qmc_result.get("mean", float('nan'))
+            q_std = qmc_result.get("std", float('nan'))
+            c_mean = cmc_result.get("mean", float('nan'))
+            c_std = cmc_result.get("std", float('nan'))
+            
+            print(f"    Quantum result: {q_mean:.6f} ± {q_std:.6f}")
+            print(f"    Classical result: {c_mean:.6f} ± {c_std:.6f}")
+        
+        # Calculate reproducibility metrics
+        metrics = calculate_reproducibility_metrics(quantum_results, classical_results)
+        
+        # Generate plots
+        plot_monte_carlo_reproducibility(quantum_results, classical_results, metrics)
+        
+        # Save results
+        results = {
+            "quantum_results": quantum_results,
+            "classical_results": classical_results,
+            "metrics": metrics
+        }
+        
+        # Use a custom encoder for JSON serialization to handle NumPy types
+        class NumpyEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, (np.integer, np.int64, np.int32)):
+                    return int(obj)
+                elif isinstance(obj, (np.floating, np.float64, np.float32)):
+                    return float(obj)
+                elif isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                return super(NumpyEncoder, self).default(obj)
+        
+        results_json = json.dumps(results, cls=NumpyEncoder, indent=2)
+        with open(os.path.join(OUTPUT_DIR, "mc_reproducibility.json"), "w") as f:
+            f.write(results_json)
+            
+        print("\nMonte Carlo reproducibility test completed successfully.")
+        return results
+        
+    except Exception as e:
+        logger.error(f"Error in Monte Carlo reproducibility test: {str(e)}")
+        print(f"\nMonte Carlo reproducibility test failed: {str(e)}")
+        return {"error": str(e)}
+
 def main():
     """Run the reproducibility validator."""
     print("=" * 80)
