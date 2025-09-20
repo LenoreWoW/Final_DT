@@ -6,50 +6,46 @@ Implements quantum-enhanced simulations and machine learning for digital twin.
 from typing import Optional
 import logging
 
-from dt_project.config import ConfigManager
-from dt_project.quantum.qmc import QuantumMonteCarlo
-from dt_project.quantum.qml import QuantumML
-from dt_project.quantum.classical_mc import ClassicalMonteCarlo
+# Import available modules only
+try:
+    from dt_project.quantum.quantum_digital_twin_core import QuantumDigitalTwinCore
+    from dt_project.quantum.quantum_optimization import QuantumOptimizer
+    from dt_project.quantum.quantum_ai_systems import QuantumNeuralNetwork
+except ImportError as e:
+    print(f"Warning: Some quantum modules not available: {e}")
 
 logger = logging.getLogger(__name__)
 
-def initialize_quantum_components(config: Optional[ConfigManager] = None) -> dict:
+def initialize_quantum_components(config=None) -> dict:
     """
-    Initialize all quantum components with the provided configuration.
+    Initialize available quantum components.
     
-    Args:
-        config: Configuration manager. If None, creates a new one.
-        
     Returns:
-        Dictionary with initialized quantum components
+        Dictionary with available quantum components
     """
-    config = config or ConfigManager()
     
-    # Initialize quantum components
-    quantum_monte_carlo = QuantumMonteCarlo(config)
-    quantum_ml = QuantumML(config)
-    classical_monte_carlo = ClassicalMonteCarlo(config)
+    logger.info("Initializing quantum components...")
     
-    # Check availability
-    qmc_available = quantum_monte_carlo.is_available()
-    qml_available = quantum_ml.is_available()
+    available_components = {}
     
-    if qmc_available:
-        logger.info("Quantum Monte Carlo simulation is available")
-    else:
-        logger.warning("Quantum Monte Carlo simulation is not available, using classical fallback")
-        
-    if qml_available:
-        logger.info("Quantum Machine Learning is available")
-    else:
-        logger.warning("Quantum Machine Learning is not available, using classical fallback")
+    try:
+        available_components["quantum_digital_twin"] = QuantumDigitalTwinCore
+        logger.info("✅ Quantum Digital Twin Core available")
+    except NameError:
+        logger.warning("❌ Quantum Digital Twin Core not available")
     
-    return {
-        "monte_carlo": quantum_monte_carlo,
-        "machine_learning": quantum_ml,
-        "classical_monte_carlo": classical_monte_carlo,
-        "qmc_available": qmc_available,
-        "qml_available": qml_available
-    }
+    try:
+        available_components["quantum_optimizer"] = QuantumOptimizer
+        logger.info("✅ Quantum Optimizer available")
+    except NameError:
+        logger.warning("❌ Quantum Optimizer not available")
+    
+    try:
+        available_components["quantum_neural_network"] = QuantumNeuralNetwork  
+        logger.info("✅ Quantum Neural Network available")
+    except NameError:
+        logger.warning("❌ Quantum Neural Network not available")
+    
+    return available_components
 
-__all__ = ["QuantumMonteCarlo", "QuantumML", "ClassicalMonteCarlo", "initialize_quantum_components"] 
+__all__ = ["initialize_quantum_components"] 

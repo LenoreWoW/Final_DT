@@ -1,0 +1,555 @@
+{% extends "base.html" %}
+
+{% block title %}Quantum Research Lab{% endblock %}
+
+{% block page_title %}🔬 Quantum Research Laboratory{% endblock %}
+
+{% block additional_css %}
+<style>
+    .lab-section {
+        margin-bottom: 2rem;
+    }
+    
+    .parameter-group {
+        background: var(--bg-glass);
+        border: 1px solid rgba(0, 230, 118, 0.2);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        backdrop-filter: blur(20px);
+    }
+    
+    .quantum-circuit-designer {
+        min-height: 400px;
+        background: linear-gradient(135deg, rgba(13, 71, 161, 0.1), rgba(0, 230, 118, 0.1));
+        border-radius: 12px;
+        border: 2px dashed rgba(0, 230, 118, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .circuit-gate {
+        display: inline-block;
+        background: var(--quantum-primary);
+        color: white;
+        padding: 0.5rem 1rem;
+        margin: 0.25rem;
+        border-radius: 8px;
+        cursor: grab;
+        transition: all 0.3s ease;
+        border: 1px solid var(--quantum-accent);
+    }
+    
+    .circuit-gate:hover {
+        transform: scale(1.05);
+        box-shadow: var(--glow-primary);
+    }
+    
+    .circuit-gate.dragging {
+        cursor: grabbing;
+        opacity: 0.7;
+    }
+    
+    .qubit-line {
+        height: 2px;
+        background: var(--quantum-accent);
+        margin: 20px 0;
+        position: relative;
+    }
+    
+    .upload-area {
+        border: 2px dashed var(--quantum-accent);
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        background: var(--bg-glass);
+        backdrop-filter: blur(20px);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .upload-area:hover {
+        border-color: var(--quantum-primary);
+        box-shadow: var(--glow-primary);
+    }
+    
+    .upload-area.dragover {
+        background: rgba(0, 230, 118, 0.1);
+        border-color: var(--quantum-accent);
+    }
+    
+    .test-results {
+        background: var(--bg-glass);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+        border: 1px solid rgba(0, 230, 118, 0.2);
+    }
+    
+    .parameter-slider {
+        width: 100%;
+        margin: 1rem 0;
+    }
+    
+    .algorithm-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    
+    .algorithm-card:hover {
+        border-color: var(--quantum-accent);
+        transform: translateY(-3px);
+    }
+    
+    .algorithm-card.selected {
+        border-color: var(--quantum-accent);
+        background: rgba(0, 230, 118, 0.1);
+    }
+    
+    .execution-status {
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 1rem;
+        border-left: 4px solid var(--quantum-accent);
+    }
+    
+    .quantum-console {
+        background: #000;
+        color: #00E676;
+        font-family: 'Courier New', monospace;
+        padding: 1rem;
+        border-radius: 8px;
+        height: 200px;
+        overflow-y: auto;
+        border: 1px solid var(--quantum-accent);
+    }
+    
+    .data-visualization {
+        min-height: 300px;
+        background: var(--bg-glass);
+        border-radius: 12px;
+        padding: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Algorithm Selection -->
+    <div class="col-12 mb-4">
+        <div class="card fade-in">
+            <div class="card-header">
+                <i class="fas fa-flask me-2"></i>Select Quantum Algorithm
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="algorithm-card card text-center p-3" data-algorithm="qaoa">
+                            <i class="fas fa-project-diagram fa-2x text-quantum mb-2"></i>
+                            <h6>QAOA</h6>
+                            <small class="text-secondary">Quantum Approximate Optimization</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="algorithm-card card text-center p-3" data-algorithm="vqe">
+                            <i class="fas fa-atom fa-2x text-quantum mb-2"></i>
+                            <h6>VQE</h6>
+                            <small class="text-secondary">Variational Quantum Eigensolver</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="algorithm-card card text-center p-3" data-algorithm="grover">
+                            <i class="fas fa-search fa-2x text-quantum mb-2"></i>
+                            <h6>Grover's Algorithm</h6>
+                            <small class="text-secondary">Quantum Search</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="algorithm-card card text-center p-3" data-algorithm="qml">
+                            <i class="fas fa-brain fa-2x text-quantum mb-2"></i>
+                            <h6>QML</h6>
+                            <small class="text-secondary">Quantum Machine Learning</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Parameter Configuration -->
+    <div class="col-lg-4 mb-4">
+        <div class="card slide-in-left">
+            <div class="card-header">
+                <i class="fas fa-sliders-h me-2"></i>Algorithm Parameters
+            </div>
+            <div class="card-body">
+                <div id="parameterContainer">
+                    <!-- QAOA Parameters -->
+                    <div class="parameter-group" id="qaoa-params" style="display: none;">
+                        <h6 class="text-quantum">QAOA Configuration</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Number of Qubits</label>
+                            <input type="range" class="form-range parameter-slider" min="2" max="10" value="4" id="qaoa-qubits">
+                            <div class="d-flex justify-content-between text-small">
+                                <span>2</span>
+                                <span id="qaoa-qubits-value">4</span>
+                                <span>10</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Circuit Depth (p)</label>
+                            <input type="range" class="form-range parameter-slider" min="1" max="5" value="1" id="qaoa-depth">
+                            <div class="d-flex justify-content-between text-small">
+                                <span>1</span>
+                                <span id="qaoa-depth-value">1</span>
+                                <span>5</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Beta (Mixer Angle)</label>
+                            <input type="range" class="form-range parameter-slider" min="0" max="3.14" step="0.1" value="0.5" id="qaoa-beta">
+                            <div class="d-flex justify-content-between text-small">
+                                <span>0</span>
+                                <span id="qaoa-beta-value">0.5</span>
+                                <span>π</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Gamma (Cost Angle)</label>
+                            <input type="range" class="form-range parameter-slider" min="0" max="3.14" step="0.1" value="0.5" id="qaoa-gamma">
+                            <div class="d-flex justify-content-between text-small">
+                                <span>0</span>
+                                <span id="qaoa-gamma-value">0.5</span>
+                                <span>π</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VQE Parameters -->
+                    <div class="parameter-group" id="vqe-params" style="display: none;">
+                        <h6 class="text-quantum">VQE Configuration</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Number of Qubits</label>
+                            <input type="range" class="form-range parameter-slider" min="2" max="8" value="4" id="vqe-qubits">
+                            <div class="d-flex justify-content-between text-small">
+                                <span>2</span>
+                                <span id="vqe-qubits-value">4</span>
+                                <span>8</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ansatz Type</label>
+                            <select class="form-select" id="vqe-ansatz">
+                                <option value="efficient_su2">Efficient SU2</option>
+                                <option value="real_amplitudes">Real Amplitudes</option>
+                                <option value="hardware_efficient">Hardware Efficient</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Max Iterations</label>
+                            <input type="range" class="form-range parameter-slider" min="50" max="500" step="50" value="100" id="vqe-iterations">
+                            <div class="d-flex justify-content-between text-small">
+                                <span>50</span>
+                                <span id="vqe-iterations-value">100</span>
+                                <span>500</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grover Parameters -->
+                    <div class="parameter-group" id="grover-params" style="display: none;">
+                        <h6 class="text-quantum">Grover's Algorithm Configuration</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Search Space Size (2^n)</label>
+                            <input type="range" class="form-range parameter-slider" min="2" max="6" value="3" id="grover-qubits">
+                            <div class="d-flex justify-content-between text-small">
+                                <span>2²</span>
+                                <span id="grover-qubits-value">2³</span>
+                                <span>2⁶</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Target Item Index</label>
+                            <input type="number" class="form-control" min="0" max="7" value="3" id="grover-target">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Number of Iterations</label>
+                            <input type="range" class="form-range parameter-slider" min="1" max="10" value="2" id="grover-iterations">
+                            <div class="d-flex justify-content-between text-small">
+                                <span>1</span>
+                                <span id="grover-iterations-value">2</span>
+                                <span>10</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- QML Parameters -->
+                    <div class="parameter-group" id="qml-params" style="display: none;">
+                        <h6 class="text-quantum">QML Configuration</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Feature Dimensions</label>
+                            <input type="range" class="form-range parameter-slider" min="2" max="8" value="4" id="qml-features">
+                            <div class="d-flex justify-content-between text-small">
+                                <span>2</span>
+                                <span id="qml-features-value">4</span>
+                                <span>8</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Circuit Layers</label>
+                            <input type="range" class="form-range parameter-slider" min="1" max="5" value="2" id="qml-layers">
+                            <div class="d-flex justify-content-between text-small">
+                                <span>1</span>
+                                <span id="qml-layers-value">2</span>
+                                <span>5</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Learning Rate</label>
+                            <input type="range" class="form-range parameter-slider" min="0.01" max="0.1" step="0.01" value="0.05" id="qml-lr">
+                            <div class="d-flex justify-content-between text-small">
+                                <span>0.01</span>
+                                <span id="qml-lr-value">0.05</span>
+                                <span>0.1</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Execution Controls -->
+                <div class="mt-4">
+                    <div class="row">
+                        <div class="col-6">
+                            <button class="btn btn-success w-100" id="runExperiment">
+                                <i class="fas fa-play me-2"></i>Run Experiment
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-warning w-100" id="stopExperiment">
+                                <i class="fas fa-stop me-2"></i>Stop
+                            </button>
+                        </div>
+                    </div>
+                    <button class="btn btn-info w-100 mt-2" id="exportResults">
+                        <i class="fas fa-download me-2"></i>Export Results
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Upload & Circuit Designer -->
+    <div class="col-lg-8 mb-4">
+        <div class="card fade-in">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="circuit-tab" data-bs-toggle="tab" data-bs-target="#circuit" type="button" role="tab">
+                            <i class="fas fa-sitemap me-1"></i>Circuit Designer
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button" role="tab">
+                            <i class="fas fa-upload me-1"></i>Data Upload
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results" type="button" role="tab">
+                            <i class="fas fa-chart-bar me-1"></i>Results
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content">
+                    <!-- Circuit Designer Tab -->
+                    <div class="tab-pane fade show active" id="circuit" role="tabpanel">
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <h6 class="text-quantum">Available Quantum Gates</h6>
+                                <div class="mb-3">
+                                    <div class="circuit-gate" draggable="true" data-gate="H">H</div>
+                                    <div class="circuit-gate" draggable="true" data-gate="X">X</div>
+                                    <div class="circuit-gate" draggable="true" data-gate="Y">Y</div>
+                                    <div class="circuit-gate" draggable="true" data-gate="Z">Z</div>
+                                    <div class="circuit-gate" draggable="true" data-gate="CNOT">CNOT</div>
+                                    <div class="circuit-gate" draggable="true" data-gate="RX">RX</div>
+                                    <div class="circuit-gate" draggable="true" data-gate="RY">RY</div>
+                                    <div class="circuit-gate" draggable="true" data-gate="RZ">RZ</div>
+                                    <div class="circuit-gate" draggable="true" data-gate="T">T</div>
+                                    <div class="circuit-gate" draggable="true" data-gate="S">S</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="quantum-circuit-designer" id="circuitCanvas">
+                            <div class="p-3">
+                                <h6 class="text-center text-secondary">Drag gates here to build your quantum circuit</h6>
+                                <div id="qubitLines">
+                                    <!-- Qubit lines will be generated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-primary" id="generateQASM">
+                                <i class="fas fa-code me-2"></i>Generate QASM
+                            </button>
+                            <button class="btn btn-outline-primary" id="clearCircuit">
+                                <i class="fas fa-trash me-2"></i>Clear Circuit
+                            </button>
+                            <button class="btn btn-outline-info" id="loadTemplate">
+                                <i class="fas fa-file-import me-2"></i>Load Template
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Data Upload Tab -->
+                    <div class="tab-pane fade" id="upload" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="upload-area" id="dataUploadArea">
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-quantum mb-3"></i>
+                                    <h5>Upload Dataset</h5>
+                                    <p class="text-secondary">Drag & drop CSV, JSON, or XLSX files<br>or click to browse</p>
+                                    <input type="file" id="dataFileInput" class="d-none" accept=".csv,.json,.xlsx,.txt" multiple>
+                                    <button class="btn btn-outline-primary mt-2" onclick="document.getElementById('dataFileInput').click()">
+                                        <i class="fas fa-folder-open me-2"></i>Browse Files
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="upload-area" id="qasmUploadArea">
+                                    <i class="fas fa-file-code fa-3x text-quantum mb-3"></i>
+                                    <h5>Upload QASM Circuit</h5>
+                                    <p class="text-secondary">Upload existing .qasm files<br>or paste QASM code</p>
+                                    <input type="file" id="qasmFileInput" class="d-none" accept=".qasm,.txt">
+                                    <button class="btn btn-outline-primary mt-2" onclick="document.getElementById('qasmFileInput').click()">
+                                        <i class="fas fa-file-upload me-2"></i>Upload QASM
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h6 class="text-quantum">Uploaded Files</h6>
+                            <div id="uploadedFiles" class="list-group">
+                                <div class="list-group-item text-center text-secondary">
+                                    No files uploaded yet
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <h6 class="text-quantum">QASM Code Editor</h6>
+                            <textarea class="form-control quantum-console" id="qasmEditor" rows="8" placeholder="Enter QASM code here or upload a file...">OPENQASM 2.0;
+include "qelib1.inc";
+
+qreg q[2];
+creg c[2];
+
+h q[0];
+cx q[0], q[1];
+measure q -> c;</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Results Tab -->
+                    <div class="tab-pane fade" id="results" role="tabpanel">
+                        <div class="execution-status" id="executionStatus">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-info-circle me-2"></i>Ready to run experiment</span>
+                                <span class="badge bg-secondary">Idle</span>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="data-visualization">
+                                    <h6 class="text-quantum mb-3">Measurement Results</h6>
+                                    <canvas id="resultsChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="data-visualization">
+                                    <h6 class="text-quantum mb-3">Performance Metrics</h6>
+                                    <div class="row text-center">
+                                        <div class="col-6">
+                                            <div class="metric-value" id="executionTime">--</div>
+                                            <div class="metric-label">Execution Time (ms)</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="metric-value" id="quantumAdvantage">--</div>
+                                            <div class="metric-label">Quantum Advantage</div>
+                                        </div>
+                                    </div>
+                                    <div class="row text-center mt-3">
+                                        <div class="col-6">
+                                            <div class="metric-value" id="fidelity">--</div>
+                                            <div class="metric-label">Fidelity (%)</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="metric-value" id="successRate">--</div>
+                                            <div class="metric-label">Success Rate (%)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <h6 class="text-quantum">Quantum Console Output</h6>
+                            <div class="quantum-console" id="consoleOutput">
+                                <div class="text-quantum">Quantum Digital Twin Platform v1.0</div>
+                                <div class="text-secondary">Ready to execute quantum experiments...</div>
+                                <div class="text-info">>>> _</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions Panel -->
+<div class="row">
+    <div class="col-12">
+        <div class="card bounce-in">
+            <div class="card-header">
+                <i class="fas fa-rocket me-2"></i>Quick Experiments
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-primary w-100" data-quick-experiment="bell-state">
+                            <i class="fas fa-link me-2"></i>Bell State Creation
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-primary w-100" data-quick-experiment="quantum-teleportation">
+                            <i class="fas fa-exchange-alt me-2"></i>Quantum Teleportation
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-primary w-100" data-quick-experiment="superposition-demo">
+                            <i class="fas fa-layer-group me-2"></i>Superposition Demo
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-primary w-100" data-quick-experiment="quantum-random">
+                            <i class="fas fa-dice me-2"></i>Quantum RNG
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_js %}
+<script src="{{ url_for('static', filename='js/quantum_lab.js') }}"></script>
+{% endblock %}
