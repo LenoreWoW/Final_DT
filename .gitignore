@@ -55,4 +55,28 @@ coverage.xml
 config.json
 config_dev.json
 config_prod.json
-config_test.json 
+config_test.json
+
+# Temporary and backup files
+*.tmp
+*.bak
+*~
+*.orig
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Quantum computing results
+results/
+plots/
+*.png
+*.json
+
+# Documentation builds
+docs/_build/
+docs/.doctrees/
+
+# Production artifacts
+*.pid
+logs/ 
