@@ -1,0 +1,177 @@
+{
+  "classical": [],
+  "quantum": [],
+  "metadata": {
+    "timestamp": "2025-09-07T06:38:14.290133",
+    "system_info": {
+      "platform": "Darwin",
+      "processor": "arm",
+      "python_version": "3.9.6",
+      "architecture": "64bit",
+      "node": "hassans-MacBook-Pro.local",
+      "timestamp": "2025-09-06T16:52:16.660722"
+    },
+    "last_comprehensive_test": "2025-09-07T06:38:14.290133"
+  },
+  "comparisons": [
+    {
+      "problem": "Portfolio Optimization",
+      "classical": {
+        "algorithm": "Markowitz",
+        "execution_time": 0.003123044967651367,
+        "sharpe_ratio": 1.3642304428321028,
+        "expected_return": 0.12914608827705798,
+        "risk": 0.09466588944383506,
+        "iterations": 8
+      },
+      "quantum": {
+        "algorithm": "QAOA",
+        "execution_time": 0.0001220703125,
+        "sharpe_ratio": 0.6778911198066996,
+        "expected_return": 0.10174963658796704,
+        "risk": 0.15009731447283292,
+        "qubits": 4,
+        "circuit_depth": 4
+      },
+      "speedup": 25.583984375,
+      "quality_ratio": 0.4969036744257204
+    },
+    {
+      "problem": "Max-Cut",
+      "graph_info": {
+        "nodes": 8,
+        "edges": 12,
+        "degree": 3
+      },
+      "classical_greedy": {
+        "cut_size": 10,
+        "execution_time": 5.507469177246094e-05
+      },
+      "classical_sdp": {
+        "cut_size": 8,
+        "execution_time": 0.0032029151916503906
+      },
+      "quantum": {
+        "cut_size": 11,
+        "execution_time": 0.00010800361633300781,
+        "qubits": 8,
+        "circuit_depth": 4
+      },
+      "best_classical": 10,
+      "quantum_advantage": true
+    },
+    {
+      "problem": "Traveling Salesman",
+      "num_cities": 5,
+      "classical_nn": {
+        "tour_length": 194.81025583950628,
+        "execution_time": 1.0967254638671875e-05
+      },
+      "classical_2opt": {
+        "tour_length": 194.81025583950628,
+        "execution_time": 2.09808349609375e-05
+      },
+      "quantum": {
+        "tour_length": 255.26764428250561,
+        "execution_time": 0.0002918243408203125,
+        "qubits": 25,
+        "circuit_depth": 6
+      },
+      "best_classical": 194.81025583950628,
+      "quantum_advantage": "False"
+    },
+    {
+      "problem": "Knapsack",
+      "classical": {
+        "total_value": 600,
+        "execution_time": 0.00010919570922851562,
+        "items": 5
+      },
+      "quantum": {
+        "total_value": 100,
+        "execution_time": 5.0067901611328125e-06,
+        "qubits": 3,
+        "circuit_depth": 6,
+        "items": 3
+      },
+      "note": "Different problem sizes due to quantum limitations"
+    },
+    {
+      "problem": "Unstructured Search",
+      "search_space_size": 64,
+      "target_items": [
+        23,
+        45
+      ],
+      "classical": {
+        "found_item": 23,
+        "execution_time": 1.1920928955078125e-06,
+        "iterations": 24
+      },
+      "quantum": {
+        "found_item": 23,
+        "execution_time": 2.574920654296875e-05,
+        "qubits": 6,
+        "circuit_depth": 10,
+        "iterations": 6,
+        "success": true
+      },
+      "theoretical_speedup": 8.0,
+      "actual_speedup": 0.046296296296296294
+    }
+  ],
+  "scalability": {
+    "portfolio": {
+      "sizes": [
+        3,
+        4,
+        5
+      ],
+      "classical_times": [
+        0.009990930557250977,
+        0.0015020370483398438,
+        0.02646493911743164
+      ],
+      "quantum_times": [
+        1.5020370483398438e-05,
+        1.1205673217773438e-05,
+        5.507469177246094e-05
+      ]
+    },
+    "maxcut": {
+      "sizes": [
+        6,
+        8,
+        10
+      ],
+      "classical_times": [
+        8.678436279296875e-05,
+        6.413459777832031e-05,
+        0.00014209747314453125
+      ],
+      "quantum_times": [
+        6.818771362304688e-05,
+        3.981590270996094e-05,
+        null
+      ]
+    },
+    "search": {
+      "sizes": [
+        16,
+        64,
+        256
+      ],
+      "classical_times": [
+        9.5367431640625e-07,
+        1.1920928955078125e-06,
+        4.0531158447265625e-06
+      ],
+      "quantum_times": [
+        2.8848648071289062e-05,
+        3.814697265625e-06,
+        2.6941299438476562e-05
+      ]
+    }
+  },
+  "total_time": 3.050798177719116
+}

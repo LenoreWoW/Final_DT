@@ -1,12 +1,8 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -23,60 +19,92 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Python Virtual Environments
+# Virtual environment
 venv/
 env/
 ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+
+# Cache
+*.cache
+cache/
+.cache/
+
+# Test results and coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+test_results/
+coverage.xml
+*.cover
+.hypothesis/
 
 # Jupyter Notebook
 .ipynb_checkpoints
 
 # Environment variables
 .env
-.venv
-env/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# IDE specific files
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Project specific
-*.log
-instance/
-.coverage
-htmlcov/
-coverage.xml
-*.cover
-
-# Local configurations
-config.json
-config_dev.json
-config_prod.json
-config_test.json
-
-# Temporary and backup files
+# Temporary files
 *.tmp
-*.bak
-*~
-*.orig
+*.temp
+temp/
+tmp/
 
-# OS specific
-.DS_Store
-Thumbs.db
-
-# Quantum computing results
-results/
-plots/
-*.png
-*.json
+# Data files (large datasets)
+data/cache/
+*.pkl
+*.joblib
 
 # Documentation builds
 docs/_build/
-docs/.doctrees/
+docs/build/
 
-# Production artifacts
-*.pid
-logs/ 
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Quantum computing specific
+.qiskit/
+quantum_cache/
+circuit_cache/
+
+# Sentry
+.sentryclirc
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/

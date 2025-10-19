@@ -1,0 +1,46 @@
+{
+  "individual_results": {
+    "athlete_twin": {
+      "twin_id": "athlete_test_001",
+      "quantum_accuracy": 0.31409974836787224,
+      "classical_accuracy": 0.9429089870613194,
+      "quantum_advantage_factor": -92.40518069678508,
+      "execution_time": 0.051434993743896484,
+      "quantum_mse": 1176.1478879725405,
+      "classical_mse": 8.148459395911479,
+      "validation_metrics": {
+        "quantum_r2": 0.0,
+        "classical_r2": 0.0,
+        "mse_improvement_percent": -14333.990903393067,
+        "mae_improvement_percent": -4147.0452359639485,
+        "sample_size": 20
+      }
+    },
+    "manufacturing_twin": {
+      "twin_id": "manufacturing_process_001",
+      "quantum_accuracy": 0,
+      "classical_accuracy": 1.0,
+      "quantum_advantage_factor": 0,
+      "execution_time": 0.12822413444519043,
+      "quantum_mse": 10.139829591814433,
+      "classical_mse": 0.1,
+      "validation_metrics": {
+        "avg_quantum_improvement": -0.13982959181443225,
+        "avg_classical_improvement": 29.673302914141033,
+        "improvement_difference": -29.813132505955465,
+        "quantum_success_rate": 0.45,
+        "classical_success_rate": 0.85,
+        "sample_size": 20
+      }
+    }
+  },
+  "overall_summary": {
+    "total_twins_tested": 2,
+    "successful_twins": 0,
+    "success_rate": 0.0,
+    "avg_quantum_advantage": -46.20259034839254,
+    "thesis_ready": false,
+    "quantum_advantage_proven": false,
+    "validation_timestamp": "2025-09-21T23:04:51.636290"
+  }
+}

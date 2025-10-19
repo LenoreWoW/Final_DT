@@ -41,12 +41,9 @@ except ImportError:
     QISKIT_AVAILABLE = False
     logging.warning("Qiskit not available - using classical fallback")
 
-try:
-    import pennylane as qml
-    PENNYLANE_AVAILABLE = True
-except ImportError:
-    PENNYLANE_AVAILABLE = False
-    logging.warning("PennyLane not available - using classical fallback")
+# PennyLane completely disabled due to compatibility issues
+PENNYLANE_AVAILABLE = False
+logging.info("PennyLane disabled - using classical fallback and Qiskit")
 
 # Digital twin specific imports
 from dt_project.data_acquisition.data_collector import DataCollector, DataPoint

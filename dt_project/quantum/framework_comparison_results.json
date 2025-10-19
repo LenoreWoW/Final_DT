@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "qiskit_available": true,
+    "pennylane_available": true,
+    "shots_per_circuit": 1024,
+    "repetitions_per_algorithm": 5,
+    "study_timestamp": 1757871109.6102972
+  },
+  "algorithm_results": {
+    "bell_state": {
+      "performance_advantage": "qiskit",
+      "speedup_factor": 2.905313480263158,
+      "usability_advantage": "equal",
+      "statistical_significance": false,
+      "p_value": 0.5,
+      "qiskit_success": true,
+      "pennylane_success": true
+    },
+    "grover_search": {
+      "performance_advantage": "pennylane",
+      "speedup_factor": 13.759200775848003,
+      "usability_advantage": "equal",
+      "statistical_significance": true,
+      "p_value": 0.01,
+      "qiskit_success": true,
+      "pennylane_success": true
+    },
+    "bernstein_vazirani": {
+      "performance_advantage": "pennylane",
+      "speedup_factor": 1.8625466650617621,
+      "usability_advantage": "equal",
+      "statistical_significance": true,
+      "p_value": 0.01,
+      "qiskit_success": true,
+      "pennylane_success": true
+    },
+    "qft": {
+      "performance_advantage": "pennylane",
+      "speedup_factor": 1.9841429591823014,
+      "usability_advantage": "equal",
+      "statistical_significance": true,
+      "p_value": 0.01,
+      "qiskit_success": true,
+      "pennylane_success": true
+    }
+  },
+  "summary_statistics": {
+    "total_algorithms_tested": 4,
+    "qiskit_performance_wins": 1,
+    "pennylane_performance_wins": 3,
+    "performance_ties": 0,
+    "qiskit_usability_wins": 0,
+    "pennylane_usability_wins": 0,
+    "usability_ties": 4,
+    "average_speedup": 5.127800970088806,
+    "statistically_significant_results": 3
+  },
+  "recommendations": {
+    "performance": "PennyLane shows better performance characteristics for most algorithms tested.",
+    "usability": "Both frameworks provide similar developer experience.",
+    "overall": "PennyLane is recommended for most quantum digital twin applications."
+  }
+}

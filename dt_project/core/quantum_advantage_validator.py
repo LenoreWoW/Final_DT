@@ -40,11 +40,8 @@ try:
 except ImportError:
     QISKIT_AVAILABLE = False
 
-try:
-    import pennylane as qml
-    PENNYLANE_AVAILABLE = True
-except ImportError:
-    PENNYLANE_AVAILABLE = False
+# PennyLane completely disabled due to compatibility issues
+PENNYLANE_AVAILABLE = False
 
 # Digital twin imports
 from dt_project.core.quantum_enhanced_digital_twin import (

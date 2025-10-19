@@ -1,0 +1,126 @@
+{
+  "default": {
+    "app_name": "Digital Twin",
+    "version": "1.0.0",
+    "cache_dir": "data/cache",
+    "log_level": "INFO",
+    "api": {
+      "weather": {
+        "base_url": "https://api.open-meteo.com/v1/forecast",
+        "timeout": 10,
+        "retry_attempts": 3,
+        "cache_duration": 3600
+      },
+      "geocoding": {
+        "base_url": "https://nominatim.openstreetmap.org",
+        "timeout": 10,
+        "retry_attempts": 3,
+        "cache_duration": 86400
+      }
+    },
+    "simulation": {
+      "terrain": {
+        "resolution": 50,
+        "max_altitude": 5000,
+        "min_altitude": 0,
+        "frequency": 0.01,
+        "noise_level": 0.2
+      },
+      "environment": {
+        "temp_range": [
+          -20,
+          45
+        ],
+        "humidity_range": [
+          0,
+          100
+        ],
+        "wind_speed_range": [
+          0,
+          30
+        ],
+        "time_step": 60
+      },
+      "biomechanics": {
+        "energy_model": "linear",
+        "fatigue_factor": 0.05,
+        "recovery_rate": 0.02,
+        "max_speed": 10.0
+      }
+    },
+    "quantum": {
+      "enabled": true,
+      "backend": "simulator",
+      "shots": 1024,
+      "max_circuit_depth": 20
+    },
+    "ui": {
+      "theme": "dark",
+      "map_zoom": 12,
+      "refresh_rate": 5,
+      "chart_animation": true
+    }
+  },
+  "development": {
+    "log_level": "DEBUG",
+    "api": {
+      "weather": {
+        "base_url": "https://api.open-meteo.com/v1/forecast",
+        "cache_duration": 60
+      }
+    },
+    "simulation": {
+      "environment": {
+        "time_step": 10
+      }
+    },
+    "quantum": {
+      "enabled": true,
+      "backend": "simulator"
+    }
+  },
+  "testing": {
+    "log_level": "DEBUG",
+    "api": {
+      "weather": {
+        "base_url": "https://api.open-meteo.com/v1/forecast",
+        "cache_duration": 0
+      },
+      "geocoding": {
+        "base_url": "https://nominatim.openstreetmap.org",
+        "cache_duration": 0
+      }
+    },
+    "simulation": {
+      "terrain": {
+        "resolution": 20
+      },
+      "environment": {
+        "time_step": 5
+      }
+    },
+    "quantum": {
+      "enabled": true,
+      "backend": "simulator",
+      "shots": 100
+    }
+  },
+  "production": {
+    "log_level": "WARNING",
+    "api": {
+      "weather": {
+        "timeout": 20,
+        "retry_attempts": 5
+      },
+      "geocoding": {
+        "timeout": 20,
+        "retry_attempts": 5
+      }
+    },
+    "quantum": {
+      "enabled": true,
+      "backend": "ibmq_qasm_simulator",
+      "shots": 4096
+    }
+  }
+}

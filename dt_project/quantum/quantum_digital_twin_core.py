@@ -48,15 +48,9 @@ except ImportError:
     TFQ_AVAILABLE = False
     logging.warning("TensorFlow Quantum not available")
 
-# PennyLane integration
-try:
-    import pennylane as qml
-    import pennylane.numpy as pnp
-    PENNYLANE_AVAILABLE = True
-    logging.info("PennyLane successfully imported for framework comparison")
-except ImportError:
-    PENNYLANE_AVAILABLE = False
-    logging.warning("PennyLane not available - install with: pip install pennylane")
+# PennyLane disabled due to compatibility issues
+PENNYLANE_AVAILABLE = False
+logging.info("PennyLane disabled - using Qiskit for quantum digital twin operations")
 
 logger = logging.getLogger(__name__)
 

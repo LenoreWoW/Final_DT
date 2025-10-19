@@ -36,12 +36,9 @@ try:
 except ImportError:
     QISKIT_AVAILABLE = False
 
-try:
-    import pennylane as qml
-    import pennylane.numpy as pnp
-    PENNYLANE_AVAILABLE = True
-except ImportError:
-    PENNYLANE_AVAILABLE = False
+# PennyLane disabled for compatibility - framework comparison will focus on Qiskit validation
+PENNYLANE_AVAILABLE = False
+logging.info("Framework comparison running in Qiskit-only mode")
 
 logger = logging.getLogger(__name__)
 

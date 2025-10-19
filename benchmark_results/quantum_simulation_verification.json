@@ -1,0 +1,52 @@
+{
+  "timestamp": "2025-09-07T13:02:05.663433",
+  "verification": "REAL QUANTUM SIMULATION",
+  "simulators_available": [
+    "QasmSimulator",
+    "StatevectorSimulator",
+    "AerSimulator"
+  ],
+  "quantum_circuits": {
+    "qaoa": {
+      "qubits": 3,
+      "depth": 12,
+      "gates": {
+        "cx": 6,
+        "h": 3,
+        "rz": 3,
+        "rx": 3,
+        "measure": 3,
+        "barrier": 1
+      },
+      "qasm_snippet": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[3];\ncreg c[3];\ncreg meas[3];\nh q[0];\nh q[1];\nh q[2];\ncx q[0],q[1];\nrz(0.5) q[1];\ncx q[0],q[1];\ncx q[1],q[2];\nrz(0.5) q[2];\ncx q[1],q[2];\ncx q[2],q[0];\nrz(0.5) q[0];\ncx q[2],q[0];\nrx(0.6) q[0];\nrx(0.6) q[1];\nrx(0.6) q[2];\nbarrier q[0],q[1],q[2];\nmeasure q[0] -> meas[0];\nmeasure q[1] -> meas[1];\nmeasure q[2] -> meas[2];"
+    },
+    "grover": {
+      "qubits": 3,
+      "depth": 10,
+      "gates": {
+        "h": 9,
+        "x": 8,
+        "measure": 3,
+        "ccz": 2,
+        "barrier": 1
+      },
+      "qasm_snippet": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\ngate ccz q0,q1,q2 { h q2; ccx q0,q1,q2; h q2; }\nqreg q[3];\ncreg c[3];\ncreg meas[3];\nh q[0];\nh q[1];\nh q[2];\nx q[1];\nccz q[0],q[1],q[2];\nx q[1];\nh q[0];\nx q[0];\nh q[1];\nx q[1];\nh q[2];\nx q[2];\nccz q[0],q[1],q[2];\nx q[0];\nh q[0];\nx q[1];\nh q[1];\nx q[2];\nh q[2];\nbarr"
+    },
+    "bell_state": {
+      "qubits": 2,
+      "depth": 3,
+      "gates": {
+        "measure": 2,
+        "h": 1,
+        "cx": 1,
+        "barrier": 1
+      },
+      "qasm_complete": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\ncreg meas[2];\nh q[0];\ncx q[0],q[1];\nbarrier q[0],q[1];\nmeasure q[0] -> meas[0];\nmeasure q[1] -> meas[1];"
+    }
+  },
+  "qasm_examples": {
+    "qaoa": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[3];\ncreg c[3];\ncreg meas[3];\nh q[0];\nh q[1];\nh q[2];\ncx q[0],q[1];\nrz(0.5) q[1];\ncx q[0],q[1];\ncx q[1],q[2];\nrz(0.5) q[2];\ncx q[1],q[2];\ncx q[2],q[0];\nrz(0.5) q[0];\ncx q[2],q[0];\nrx(0.6) q[0];\nrx(0.6) q[1];\nrx(0.6) q[2];\nbarrier q[0],q[1],q[2];\nmeasure q[0] -> meas[0];\nmeasure q[1] -> meas[1];\nmeasure q[2] -> meas[2];",
+    "grover": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\ngate ccz q0,q1,q2 { h q2; ccx q0,q1,q2; h q2; }\nqreg q[3];\ncreg c[3];\ncreg meas[3];\nh q[0];\nh q[1];\nh q[2];\nx q[1];\nccz q[0],q[1],q[2];\nx q[1];\nh q[0];\nx q[0];\nh q[1];\nx q[1];\nh q[2];\nx q[2];\nccz q[0],q[1],q[2];\nx q[0];\nh q[0];\nx q[1];\nh q[1];\nx q[2];\nh q[2];\nbarrier q[0],q[1],q[2];\nmeasure q[0] -> meas[0];\nmeasure q[1] -> meas[1];\nmeasure q[2] -> meas[2];",
+    "bell": "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[2];\ncreg c[2];\ncreg meas[2];\nh q[0];\ncx q[0],q[1];\nbarrier q[0],q[1];\nmeasure q[0] -> meas[0];\nmeasure q[1] -> meas[1];"
+  }
+}

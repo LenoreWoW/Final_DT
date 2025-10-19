@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "qiskit_available": true,
+    "pennylane_available": true,
+    "shots_per_circuit": 2048,
+    "repetitions_per_algorithm": 20,
+    "study_timestamp": 1757874540.4994528
+  },
+  "algorithm_results": {
+    "bell_state": {
+      "performance_advantage": "pennylane",
+      "speedup_factor": 3.2083950249083992,
+      "usability_advantage": "equal",
+      "statistical_significance": true,
+      "p_value": 0.01,
+      "qiskit_success": true,
+      "pennylane_success": true
+    },
+    "grover_search": {
+      "performance_advantage": "pennylane",
+      "speedup_factor": 20.23267937175654,
+      "usability_advantage": "equal",
+      "statistical_significance": true,
+      "p_value": 0.01,
+      "qiskit_success": true,
+      "pennylane_success": true
+    },
+    "bernstein_vazirani": {
+      "performance_advantage": "pennylane",
+      "speedup_factor": 2.7244675831288134,
+      "usability_advantage": "equal",
+      "statistical_significance": true,
+      "p_value": 0.01,
+      "qiskit_success": true,
+      "pennylane_success": true
+    },
+    "qft": {
+      "performance_advantage": "pennylane",
+      "speedup_factor": 2.7906380599685905,
+      "usability_advantage": "equal",
+      "statistical_significance": true,
+      "p_value": 0.01,
+      "qiskit_success": true,
+      "pennylane_success": true
+    }
+  },
+  "summary_statistics": {
+    "total_algorithms_tested": 4,
+    "qiskit_performance_wins": 0,
+    "pennylane_performance_wins": 4,
+    "performance_ties": 0,
+    "qiskit_usability_wins": 0,
+    "pennylane_usability_wins": 0,
+    "usability_ties": 4,
+    "average_speedup": 7.239045009940586,
+    "statistically_significant_results": 4
+  },
+  "recommendations": {
+    "performance": "PennyLane shows better performance characteristics for most algorithms tested.",
+    "usability": "Both frameworks provide similar developer experience.",
+    "overall": "PennyLane is recommended for most quantum digital twin applications."
+  }
+}
