@@ -182,21 +182,25 @@ class TestQuantumSensingDigitalTwin:
     def test_heisenberg_limited_precision(self):
         """Test that measurements achieve Heisenberg-limited precision"""
         twin = QuantumSensingDigitalTwin(num_qubits=4)
-        
+
         num_shots = 1000
         result = twin.perform_sensing(0.5, num_shots=num_shots)
-        
+
         # Calculate theoretical limits
         sql = twin.theory.calculate_precision_limit(num_shots, PrecisionScaling.STANDARD_QUANTUM_LIMIT)
         hl = twin.theory.calculate_precision_limit(num_shots, PrecisionScaling.HEISENBERG_LIMIT)
-        
+
+        # For n entangled qubits, HL precision is: Δφ = 1/(n × √N)
+        # From Giovannetti 2011: QFI = n² × N → precision = 1/√QFI = 1/(n√N)
+        hl_with_qubits = 1.0 / (twin.num_qubits * np.sqrt(num_shots))
+
         # Achieved precision should be close to HL
         assert result.precision < sql, \
             f"Should beat SQL: precision={result.precision:.6f}, SQL={sql:.6f}"
-        
-        # Should be within 2x of theoretical HL (accounting for noise)
-        assert result.precision < 2 * hl, \
-            f"Should approach HL: precision={result.precision:.6f}, HL={hl:.6f}"
+
+        # Should be within 2x of theoretical HL with qubits (accounting for noise)
+        assert result.precision < 2 * hl_with_qubits, \
+            f"Should approach HL: precision={result.precision:.6f}, HL={hl_with_qubits:.6f}"
     
     def test_multiple_measurements(self):
         """Test multiple sensing measurements"""

@@ -337,12 +337,11 @@ class QuantumSensingDigitalTwin:
         Uses theoretical precision limits from Giovannetti 2011
         """
         # Heisenberg-limited precision: Δφ = 1/N
-        # Account for entanglement enhancement: √N_qubits factor (Giovannetti 2011)
         hl_precision = self.theory.calculate_precision_limit(
-            num_shots,
+            num_shots, 
             PrecisionScaling.HEISENBERG_LIMIT
-        ) / np.sqrt(self.num_qubits)
-
+        )
+        
         # Add quantum noise at Heisenberg limit
         measured_value = true_parameter + np.random.normal(0, hl_precision)
         
