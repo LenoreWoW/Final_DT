@@ -1,22 +1,13 @@
 #!/usr/bin/env python3
 """
-🔌 REAL QUANTUM HARDWARE INTEGRATION - PRODUCTION READY
+Quantum Simulation Integration - Aer Simulator Backend
 ==========================================================
 
-Actual connections to quantum hardware providers with credentials management.
-This module provides real, working quantum hardware access.
+Provides quantum simulation using Qiskit Aer simulators.
+This module handles circuit execution on local simulators.
 
-Supported Quantum Hardware:
-- IBM Quantum Network (127-qubit Eagle, 433-qubit Osprey, 1121-qubit Condor)
-- Google Quantum AI (Sycamore processor)
-- Amazon Braket (IonQ, Rigetti, D-Wave)
-- Microsoft Azure Quantum
-- Rigetti Quantum Cloud Services
-- IonQ Trapped Ion Systems
-
-Author: Quantum Hardware Integration Team
-Purpose: Enable actual quantum hardware execution for digital twins
-Innovation: Production-ready quantum hardware orchestration
+Author: Quantum Platform Development Team
+Purpose: Enable quantum simulation for digital twins
 """
 
 import os
@@ -30,15 +21,13 @@ from enum import Enum
 import numpy as np
 import logging
 
-# IBM Quantum
+# Qiskit Aer Simulator
 try:
-    from qiskit import QuantumCircuit, transpile, IBMQ
-    from qiskit.providers.ibmq import IBMQProvider, IBMQBackend
-    from qiskit.tools.monitor import job_monitor
-    from qiskit_ibm_runtime import QiskitRuntimeService, Session, Options, Sampler, Estimator
-    IBM_AVAILABLE = True
+    from qiskit import QuantumCircuit, transpile
+    from qiskit_aer import AerSimulator
+    AER_AVAILABLE = True
 except ImportError:
-    IBM_AVAILABLE = False
+    AER_AVAILABLE = False
 
 # Amazon Braket
 try:
@@ -49,6 +38,7 @@ try:
     BRAKET_AVAILABLE = True
 except ImportError:
     BRAKET_AVAILABLE = False
+    BraketCircuit = Any  # Type hint fallback when Braket not available
 
 # Google Cirq
 try:
@@ -70,8 +60,8 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class QuantumProvider(Enum):
-    """Available quantum hardware providers."""
-    IBM = "ibm"
+    """Available quantum providers."""
+    AER_SIMULATOR = "aer_simulator"
     GOOGLE = "google"
     AMAZON = "amazon"
     AZURE = "azure"
@@ -135,9 +125,6 @@ class QuantumCredentialsManager:
 
         # Override with environment variables (more secure)
         env_mappings = {
-            'IBM_QUANTUM_TOKEN': ('ibm', 'token'),
-            'IBM_QUANTUM_URL': ('ibm', 'url'),
-            'IBM_QUANTUM_INSTANCE': ('ibm', 'instance'),
             'AWS_ACCESS_KEY_ID': ('aws', 'access_key'),
             'AWS_SECRET_ACCESS_KEY': ('aws', 'secret_key'),
             'AWS_REGION': ('aws', 'region'),
@@ -175,132 +162,67 @@ class QuantumCredentialsManager:
         # Set restrictive permissions
         os.chmod(self.credentials_file, 0o600)
 
-class IBMQuantumConnector:
-    """IBM Quantum Network connector with real hardware access."""
+class AerSimulatorConnector:
+    """Qiskit Aer Simulator connector for local quantum simulation."""
 
-    def __init__(self, credentials_manager: QuantumCredentialsManager):
-        self.credentials = credentials_manager.get_credentials(QuantumProvider.IBM)
-        self.provider: Optional[IBMQProvider] = None
-        self.runtime_service: Optional[QiskitRuntimeService] = None
-        self.available_backends: List[str] = []
+    def __init__(self, credentials_manager: QuantumCredentialsManager = None):
+        self.simulator = None
+        self.available_backends: List[str] = ['aer_simulator']
 
     async def connect(self) -> bool:
-        """Establish connection to IBM Quantum."""
+        """Initialize Aer Simulator."""
 
-        if not IBM_AVAILABLE:
-            logger.error("IBM Quantum libraries not installed")
+        if not AER_AVAILABLE:
+            logger.error("Qiskit Aer libraries not installed")
             return False
 
         try:
-            # Try Qiskit Runtime Service (newer)
-            if 'token' in self.credentials:
-                self.runtime_service = QiskitRuntimeService(
-                    channel="ibm_quantum",
-                    token=self.credentials['token'],
-                    instance=self.credentials.get('instance', 'ibm-q/open/main')
-                )
-
-                # List available backends
-                backends = self.runtime_service.backends()
-                self.available_backends = [b.name for b in backends]
-
-                logger.info(f"Connected to IBM Quantum Runtime with {len(self.available_backends)} backends")
-                return True
-
-            # Fallback to IBMQ (older method)
-            if 'url' in self.credentials:
-                IBMQ.save_account(
-                    token=self.credentials['token'],
-                    url=self.credentials['url'],
-                    overwrite=True
-                )
-
-            self.provider = IBMQ.load_account()
-
-            if self.provider:
-                backends = self.provider.backends()
-                self.available_backends = [b.name() for b in backends]
-                logger.info(f"Connected to IBM Quantum with {len(self.available_backends)} backends")
-                return True
+            self.simulator = AerSimulator()
+            logger.info("Connected to Qiskit Aer Simulator")
+            return True
 
         except Exception as e:
-            logger.error(f"Failed to connect to IBM Quantum: {e}")
+            logger.error(f"Failed to initialize Aer Simulator: {e}")
             return False
 
-        return False
-
     async def execute_circuit(self, circuit: QuantumCircuit,
-                            backend_name: str = "ibmq_qasm_simulator",
+                            backend_name: str = "aer_simulator",
                             shots: int = 1024,
                             optimization_level: int = 3) -> QuantumJobResult:
-        """Execute quantum circuit on real IBM hardware."""
+        """Execute quantum circuit on Aer Simulator."""
 
         start_time = time.time()
 
         try:
-            if self.runtime_service:
-                # Use Runtime Service
-                backend = self.runtime_service.backend(backend_name)
+            if self.simulator is None:
+                await self.connect()
 
-                # Transpile for hardware
-                transpiled = transpile(circuit, backend, optimization_level=optimization_level)
+            # Transpile for simulator
+            transpiled = transpile(circuit, self.simulator, optimization_level=optimization_level)
 
-                # Run with Session for better performance
-                with Session(service=self.runtime_service, backend=backend) as session:
-                    sampler = Sampler(session=session)
-                    job = sampler.run(transpiled, shots=shots)
-                    result = job.result()
+            # Run on simulator
+            job = self.simulator.run(transpiled, shots=shots)
+            result = job.result()
+            counts = result.get_counts()
 
-                    # Extract counts
-                    counts = result.quasi_dists[0]
-
-                    return QuantumJobResult(
-                        job_id=job.job_id(),
-                        device=backend_name,
-                        provider=QuantumProvider.IBM,
-                        status="completed",
-                        counts=counts,
-                        execution_time=time.time() - start_time,
-                        queue_time=0,  # Would need to track separately
-                        cost=self._calculate_cost(shots, backend_name),
-                        metadata={'transpiled_depth': transpiled.depth()}
-                    )
-
-            elif self.provider:
-                # Use legacy IBMQ
-                backend = self.provider.get_backend(backend_name)
-
-                # Transpile for hardware
-                transpiled = transpile(circuit, backend, optimization_level=optimization_level)
-
-                # Execute
-                job = backend.run(transpiled, shots=shots)
-
-                # Monitor job
-                job_monitor(job)
-
-                # Get results
-                result = job.result()
-                counts = result.get_counts()
-
-                return QuantumJobResult(
-                    job_id=job.job_id(),
-                    device=backend_name,
-                    provider=QuantumProvider.IBM,
-                    status="completed",
-                    counts=counts,
-                    execution_time=time.time() - start_time,
-                    queue_time=job.queue_position() if hasattr(job, 'queue_position') else 0,
-                    cost=self._calculate_cost(shots, backend_name),
-                    metadata={'transpiled_depth': transpiled.depth()}
-                )
+            return QuantumJobResult(
+                job_id=job.job_id(),
+                device="aer_simulator",
+                provider=QuantumProvider.AER_SIMULATOR,
+                status="completed",
+                counts=counts,
+                execution_time=time.time() - start_time,
+                queue_time=0,
+                cost=0.0,
+                metadata={'transpiled_depth': transpiled.depth()}
+            )
 
         except Exception as e:
             logger.error(f"Circuit execution failed: {e}")
             return QuantumJobResult(
                 job_id="error",
-                device=backend_name,
-                provider=QuantumProvider.IBM,
+                device="aer_simulator",
+                provider=QuantumProvider.AER_SIMULATOR,
                 status="failed",
                 counts=None,
                 execution_time=time.time() - start_time,
@@ -310,39 +232,22 @@ class IBMQuantumConnector:
                 error=str(e)
             )
 
-    def _calculate_cost(self, shots: int, backend: str) -> float:
-        """Calculate execution cost."""
-        # IBM Quantum pricing (simplified)
-        if 'simulator' in backend.lower():
-            return 0.0  # Simulators are free
-        else:
-            # Real hardware: $0.00035 per shot (example pricing)
-            return shots * 0.00035
+    def get_device_specs(self, backend_name: str = "aer_simulator") -> Optional[QuantumDeviceSpecs]:
+        """Get specifications for the Aer simulator."""
 
-    def get_device_specs(self, backend_name: str) -> Optional[QuantumDeviceSpecs]:
-        """Get specifications for a specific backend."""
-
-        if self.runtime_service:
-            try:
-                backend = self.runtime_service.backend(backend_name)
-                config = backend.configuration()
-
-                return QuantumDeviceSpecs(
-                    provider=QuantumProvider.IBM,
-                    device_name=backend_name,
-                    n_qubits=config.n_qubits,
-                    hardware_type=QuantumHardwareType.GATE_BASED,
-                    connectivity=config.coupling_map if hasattr(config, 'coupling_map') else "unknown",
-                    gate_fidelity=0.995,  # Would need to query calibration data
-                    coherence_time_us=100,  # Average estimate
-                    gate_time_ns=300,  # Average estimate
-                    availability=backend.status().operational,
-                    queue_depth=backend.status().pending_jobs,
-                    cost_per_shot=0.00035 if not config.simulator else 0.0
-                )
-            except Exception as e:
-                logger.error(f"Failed to get device specs: {e}")
-                return None
+        return QuantumDeviceSpecs(
+            provider=QuantumProvider.AER_SIMULATOR,
+            device_name="aer_simulator",
+            n_qubits=30,
+            hardware_type=QuantumHardwareType.GATE_BASED,
+            connectivity="full",
+            gate_fidelity=1.0,
+            coherence_time_us=float('inf'),
+            gate_time_ns=0,
+            availability=True,
+            queue_depth=0,
+            cost_per_shot=0.0
+        )
 
 class AmazonBraketConnector:
     """Amazon Braket connector for multiple quantum hardware providers."""
@@ -486,16 +391,16 @@ class QuantumHardwareOrchestrator:
 
         results = {}
 
-        # IBM Quantum
-        if IBM_AVAILABLE:
-            ibm_connector = IBMQuantumConnector(self.credentials_manager)
-            if await ibm_connector.connect():
-                self.connectors[QuantumProvider.IBM] = ibm_connector
-                results[QuantumProvider.IBM] = True
-                logger.info("✅ IBM Quantum connected")
+        # Aer Simulator
+        if AER_AVAILABLE:
+            aer_connector = AerSimulatorConnector(self.credentials_manager)
+            if await aer_connector.connect():
+                self.connectors[QuantumProvider.AER_SIMULATOR] = aer_connector
+                results[QuantumProvider.AER_SIMULATOR] = True
+                logger.info("Aer Simulator connected")
             else:
-                results[QuantumProvider.IBM] = False
-                logger.warning("❌ IBM Quantum connection failed")
+                results[QuantumProvider.AER_SIMULATOR] = False
+                logger.warning("Aer Simulator connection failed")
 
         # Amazon Braket
         if BRAKET_AVAILABLE:
@@ -525,7 +430,7 @@ class QuantumHardwareOrchestrator:
             return QuantumJobResult(
                 job_id="no_device",
                 device="none",
-                provider=QuantumProvider.IBM,
+                provider=QuantumProvider.AER_SIMULATOR,
                 status="failed",
                 counts=None,
                 execution_time=0,
@@ -539,7 +444,7 @@ class QuantumHardwareOrchestrator:
         provider = best_device.provider
         connector = self.connectors.get(provider)
 
-        if provider == QuantumProvider.IBM and connector:
+        if provider == QuantumProvider.AER_SIMULATOR and connector:
             result = await connector.execute_circuit(
                 circuit,
                 backend_name=best_device.device_name,
@@ -587,7 +492,7 @@ class QuantumHardwareOrchestrator:
             if preferred_provider and provider != preferred_provider:
                 continue
 
-            if provider == QuantumProvider.IBM:
+            if provider == QuantumProvider.AER_SIMULATOR:
                 for backend_name in connector.available_backends:
                     specs = connector.get_device_specs(backend_name)
                     if specs and specs.n_qubits >= min_qubits and specs.cost_per_shot <= max_cost:
@@ -650,47 +555,46 @@ class QuantumHardwareOrchestrator:
         }
 
 # Testing function
-async def test_real_quantum_hardware():
-    """Test real quantum hardware connections."""
+async def test_quantum_simulation():
+    """Test quantum simulation connections."""
 
-    print("🔌 REAL QUANTUM HARDWARE INTEGRATION TEST")
+    print("Quantum Simulation Integration Test")
     print("=" * 60)
 
     # Create orchestrator
     orchestrator = QuantumHardwareOrchestrator()
 
     # Initialize all providers
-    print("\n📡 Connecting to Quantum Providers...")
+    print("\nConnecting to Quantum Providers...")
     connections = await orchestrator.initialize_all_providers()
 
     for provider, connected in connections.items():
-        status = "✅ Connected" if connected else "❌ Failed"
+        status = "Connected" if connected else "Failed"
         print(f"  {provider.value}: {status}")
 
     # Create test circuit (Bell state)
-    if IBM_AVAILABLE:
+    if AER_AVAILABLE:
         circuit = QuantumCircuit(2, 2)
         circuit.h(0)
         circuit.cx(0, 1)
         circuit.measure([0, 1], [0, 1])
 
-        print("\n🔬 Executing Bell State on Best Available Hardware...")
+        print("\nExecuting Bell State on Aer Simulator...")
 
         requirements = {
             'min_qubits': 2,
-            'shots': 100,  # Low shots for testing
+            'shots': 100,
             'max_cost_per_shot': 0.001,
-            'preferred_provider': QuantumProvider.IBM
+            'preferred_provider': QuantumProvider.AER_SIMULATOR
         }
 
         result = await orchestrator.execute_on_best_hardware(circuit, requirements)
 
-        print(f"\n📊 Execution Results:")
+        print(f"\nExecution Results:")
         print(f"  Job ID: {result.job_id}")
         print(f"  Device: {result.device}")
         print(f"  Status: {result.status}")
         print(f"  Execution Time: {result.execution_time:.2f}s")
-        print(f"  Cost: ${result.cost:.4f}")
 
         if result.counts:
             print(f"  Measurement Results:")
@@ -700,12 +604,9 @@ async def test_real_quantum_hardware():
     # Get statistics
     stats = orchestrator.get_execution_statistics()
     if stats:
-        print(f"\n📈 Execution Statistics:")
+        print(f"\nExecution Statistics:")
         print(f"  Total Jobs: {stats.get('total_jobs', 0)}")
         print(f"  Success Rate: {stats.get('success_rate', 0):.1%}")
-        print(f"  Total Cost: ${stats.get('total_cost_usd', 0):.4f}")
 
 if __name__ == "__main__":
-    # WARNING: This will use real quantum hardware and may incur costs!
-    # Ensure you have valid credentials configured before running
-    asyncio.run(test_real_quantum_hardware())
+    asyncio.run(test_quantum_simulation())

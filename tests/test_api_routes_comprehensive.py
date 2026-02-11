@@ -1,9 +1,18 @@
 """
 Comprehensive tests for API routes and endpoints.
 Tests all API functionality including quantum operations, data management, and security.
+
+NOTE: web_interface module was archived. Tests are skipped.
 """
 
 import pytest
+
+# Skip all tests in this module - the web_interface was archived
+pytest.skip(
+    "Skipping: web_interface module was archived",
+    allow_module_level=True
+)
+
 import json
 import asyncio
 import numpy as np

@@ -1,9 +1,18 @@
 """
 Comprehensive tests for authentication and security systems.
 Tests critical security vulnerabilities in decorators.py.
+
+NOTE: web_interface module was archived. Tests are skipped.
 """
 
 import pytest
+
+# Skip all tests in this module - the web_interface was archived
+pytest.skip(
+    "Skipping: web_interface module was archived",
+    allow_module_level=True
+)
+
 from unittest.mock import Mock, patch, MagicMock
 from flask import Flask, request, jsonify, g
 import json

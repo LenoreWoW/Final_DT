@@ -1,9 +1,18 @@
 """
 Comprehensive tests for quantum consciousness bridge implementation.
 Tests theoretical consciousness emergence in quantum digital twins.
+
+NOTE: This module was archived as experimental. Tests are skipped.
 """
 
 import pytest
+
+# Skip all tests in this module - the module was archived
+pytest.skip(
+    "Skipping: quantum_consciousness_bridge was archived as experimental",
+    allow_module_level=True
+)
+
 import numpy as np
 import asyncio
 from datetime import datetime, timedelta

@@ -1,9 +1,18 @@
 """
 Comprehensive tests for quantum innovations module.
 Tests breakthrough quantum features and boundary-pushing implementations.
+
+NOTE: quantum_innovations module was archived as experimental. Tests are skipped.
 """
 
 import pytest
+
+# Skip all tests in this module - the module was archived
+pytest.skip(
+    "Skipping: quantum_innovations module was archived as experimental",
+    allow_module_level=True
+)
+
 import numpy as np
 import asyncio
 import json

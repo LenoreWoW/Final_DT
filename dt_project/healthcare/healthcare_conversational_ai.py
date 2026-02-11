@@ -51,6 +51,7 @@ try:
     from .drug_discovery import (
         DrugDiscoveryQuantumTwin,
         TargetProtein,
+        TargetProteinType,
         ProteinClass
     )
     from .medical_imaging import (
@@ -185,11 +186,13 @@ class HealthcareIntentClassifier:
             ],
             HealthcareIntent.DRUG_DESIGN: [
                 r'drug.*discovery', r'design.*drug', r'molecule.*simulation',
-                r'find.*drug', r'drug.*candidate', r'molecular.*design'
+                r'find.*drug', r'drug.*candidate', r'molecular.*design',
+                r'design.*for.*protein', r'egfr', r'protein.*target'
             ],
             HealthcareIntent.IMAGE_ANALYSIS: [
                 r'analyze.*image', r'x-?ray', r'mri', r'ct.*scan',
-                r'medical.*image', r'diagnose.*image', r'tumor.*detection'
+                r'medical.*image', r'diagnose.*image', r'tumor.*detection',
+                r'chest.*x-?ray', r'analyze.*x-?ray'
             ],
             HealthcareIntent.GENOMIC_PROFILING: [
                 r'genomic.*analysis', r'gene.*mutation', r'genetic.*variant',
@@ -197,11 +200,13 @@ class HealthcareIntentClassifier:
             ],
             HealthcareIntent.OUTBREAK_FORECASTING: [
                 r'epidemic', r'outbreak', r'disease.*spread', r'pandemic',
-                r'infection.*rate', r'forecast.*case', r'public.*health'
+                r'infection.*rate', r'forecast.*case', r'public.*health',
+                r'covid', r'model.*outbreak'
             ],
             HealthcareIntent.PATIENT_ASSIGNMENT: [
                 r'patient.*assign', r'hospital.*transfer', r'bed.*allocation',
-                r'resource.*allocation', r'hospital.*operation', r'patient.*flow'
+                r'resource.*allocation', r'hospital.*operation', r'patient.*flow',
+                r'optimize.*transfer', r'patient.*transfer'
             ],
             HealthcareIntent.HELP: [
                 r'help', r'what.*can.*do', r'capabilities', r'how.*use'
@@ -493,6 +498,8 @@ class HealthcareConversationalAI:
             age=age,
             sex=sex,
             diagnosis=CancerType[cancer_type],
+            stage="II",
+            tumor_grade="G2",
             genomic_mutations=[
                 {'gene': 'EGFR', 'variant': 'L858R', 'type': 'SNV'}
             ],
@@ -507,9 +514,9 @@ class HealthcareConversationalAI:
         if query.user_role == UserRole.PATIENT:
             response_text = (
                 f"Based on your {cancer_type.lower()} cancer diagnosis, our quantum analysis recommends:\n\n"
-                f"**Recommended Treatment**: {plan.primary_treatment.therapy_name}\n"
-                f"**Expected Response**: {plan.primary_treatment.expected_response_rate:.0%} chance of response\n"
-                f"**Survival Benefit**: {plan.primary_treatment.survival_benefit_months:.1f} months improvement\n\n"
+                f"**Recommended Treatment**: {plan.primary_treatment.treatment_name}\n"
+                f"**Expected Response**: {plan.primary_treatment.predicted_response_rate:.0%} chance of response\n"
+                f"**Survival Benefit**: {plan.primary_treatment.predicted_progression_free_survival_months:.1f} months improvement\n\n"
                 f"This recommendation is personalized based on your specific genetic profile and biomarkers. "
                 f"Please discuss with your oncologist."
             )
@@ -517,12 +524,12 @@ class HealthcareConversationalAI:
             response_text = (
                 f"**Quantum Personalized Treatment Plan**\n\n"
                 f"Patient: {age}y {sex} with {cancer_type}\n\n"
-                f"**Primary Recommendation**: {plan.primary_treatment.therapy_name}\n"
-                f"- Rationale: {plan.primary_treatment.rationale}\n"
-                f"- Evidence Level: {plan.primary_treatment.evidence_level}\n"
-                f"- Expected ORR: {plan.primary_treatment.expected_response_rate:.0%}\n"
-                f"- PFS benefit: {plan.primary_treatment.survival_benefit_months:.1f} months\n"
-                f"- Toxicity: Grade {plan.primary_treatment.expected_toxicity_grade}\n\n"
+                f"**Primary Recommendation**: {plan.primary_treatment.treatment_name}\n"
+                f"- Drugs: {', '.join(plan.primary_treatment.drugs)}\n"
+                f"- Confidence: {plan.primary_treatment.quantum_confidence:.0%}\n"
+                f"- Expected ORR: {plan.primary_treatment.predicted_response_rate:.0%}\n"
+                f"- PFS benefit: {plan.primary_treatment.predicted_progression_free_survival_months:.1f} months\n"
+                f"- Toxicity score: {plan.primary_treatment.toxicity_score:.1f}/10\n\n"
                 f"**Actionable Mutations**: {len(plan.actionable_mutations)} found\n"
                 f"**Quantum Modules Used**: {', '.join(plan.quantum_modules_used)}\n"
             )
@@ -554,10 +561,9 @@ class HealthcareConversationalAI:
         target = TargetProtein(
             protein_id="EGFR",
             protein_name="Epidermal Growth Factor Receptor",
-            protein_class=ProteinClass.KINASE,
-            sequence="MRPSGTAGAALLALLAALCPASRA...",  # Truncated
-            active_site_residues=[790, 858],
-            known_mutations=["L858R", "T790M"]
+            protein_type=TargetProteinType.KINASE,
+            binding_site_residues=[790, 858],
+            known_inhibitors=["Erlotinib", "Gefitinib"]
         )
 
         # Run quantum drug discovery
@@ -567,9 +573,9 @@ class HealthcareConversationalAI:
             f"**Quantum Drug Discovery Results**\n\n"
             f"Target: {target.protein_name} ({target.protein_id})\n\n"
             f"**Top Candidate**: {result.top_candidates[0].smiles}\n"
-            f"- Binding Affinity: {result.top_candidates[0].binding_affinity_kcal:.1f} kcal/mol\n"
-            f"- Drug-likeness: {result.top_candidates[0].druglikeness_score:.2f}\n"
-            f"- ADMET Profile: {result.top_candidates[0].admet_profile['oral_bioavailability']:.0%} bioavailability\n\n"
+            f"- Binding Affinity: {result.top_candidates[0].binding_affinity:.1f} kcal/mol\n"
+            f"- Synthesis Feasibility: {result.top_candidates[0].synthesis_feasibility:.1f}/10\n"
+            f"- ADMET Predictions: {len(result.top_candidates[0].admet_scores)} properties evaluated\n\n"
             f"**Quantum Advantage**: {result.quantum_speedup:.0f}x faster than classical\n"
             f"**Confidence**: {result.confidence_score:.0%}\n"
         )

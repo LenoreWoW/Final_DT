@@ -7,9 +7,18 @@ Tests that validate actual quantum digital twin implementations with real data a
 
 Author: Hassan Al-Sahli
 Purpose: Thesis Defense - Validation of Real Quantum Digital Twin Implementations
+
+NOTE: real_quantum_digital_twins module was archived. Tests are skipped.
 """
 
 import pytest
+
+# Skip all tests in this module - the module was archived
+pytest.skip(
+    "Skipping: real_quantum_digital_twins module was archived",
+    allow_module_level=True
+)
+
 import asyncio
 import numpy as np
 import pandas as pd

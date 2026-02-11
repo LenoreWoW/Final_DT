@@ -20,9 +20,6 @@ class QuantumConfig:
     shots: int = 1024
     max_qubits: int = 25
     error_threshold: float = 0.001
-    ibmq_token: Optional[str] = None
-    ibmq_provider: str = 'ibm-q'
-    ibmq_backend: str = 'ibm_qasm_simulator'
 
 @dataclass
 class DatabaseConfig:
@@ -44,7 +41,6 @@ class SecurityConfig:
 @dataclass
 class FeatureConfig:
     """Feature toggles."""
-    enable_quantum_internet: bool = True
     enable_fault_tolerance: bool = True
     enable_holographic_viz: bool = True
     enable_websocket: bool = True
@@ -161,10 +157,6 @@ class UnifiedConfigManager:
         self.quantum.shots = self._get_int_env('QUANTUM_SHOTS', self.quantum.shots)
         self.quantum.max_qubits = self._get_int_env('QUANTUM_MAX_QUBITS', self.quantum.max_qubits)
         self.quantum.error_threshold = self._get_float_env('QUANTUM_ERROR_THRESHOLD', self.quantum.error_threshold)
-        self.quantum.ibmq_token = os.getenv('IBMQ_TOKEN')
-        self.quantum.ibmq_provider = os.getenv('IBMQ_PROVIDER', self.quantum.ibmq_provider)
-        self.quantum.ibmq_backend = os.getenv('IBMQ_BACKEND', self.quantum.ibmq_backend)
-        
         # Database configuration
         self.database.url = os.getenv('DATABASE_URL', self.database.url)
         self.database.pool_size = self._get_int_env('DATABASE_POOL_SIZE', self.database.pool_size)
@@ -180,7 +172,6 @@ class UnifiedConfigManager:
             self.security.cors_origins = [origin.strip() for origin in cors_origins.split(',')]
         
         # Feature configuration
-        self.features.enable_quantum_internet = self._get_bool_env('ENABLE_QUANTUM_INTERNET', self.features.enable_quantum_internet)
         self.features.enable_fault_tolerance = self._get_bool_env('ENABLE_FAULT_TOLERANCE', self.features.enable_fault_tolerance)
         self.features.enable_holographic_viz = self._get_bool_env('ENABLE_HOLOGRAPHIC_VIZ', self.features.enable_holographic_viz)
         self.features.enable_websocket = self._get_bool_env('ENABLE_WEBSOCKET', self.features.enable_websocket)
@@ -275,10 +266,6 @@ class UnifiedConfigManager:
         if len(self.security.secret_key) < 32:
             logger.warning("Secret key should be at least 32 characters for security")
         
-        # Check required API keys if features are enabled
-        if self.quantum.enabled and self.quantum.ibmq_token:
-            if len(self.quantum.ibmq_token) < 10:
-                logger.warning("IBMQ token appears to be invalid")
     
     def get_flask_config(self) -> Dict[str, Any]:
         """Get Flask-compatible configuration dictionary."""
@@ -300,15 +287,11 @@ class UnifiedConfigManager:
         """Get quantum-specific configuration."""
         return {
             'fault_tolerance': self.features.enable_fault_tolerance,
-            'quantum_internet': self.features.enable_quantum_internet,
             'holographic_viz': self.features.enable_holographic_viz,
             'max_qubits': self.quantum.max_qubits,
             'error_threshold': self.quantum.error_threshold,
             'backend': self.quantum.backend,
-            'shots': self.quantum.shots,
-            'ibmq_token': self.quantum.ibmq_token,
-            'ibmq_provider': self.quantum.ibmq_provider,
-            'ibmq_backend': self.quantum.ibmq_backend
+            'shots': self.quantum.shots
         }
     
     def is_production(self) -> bool:
@@ -329,7 +312,6 @@ class UnifiedConfigManager:
             'quantum_backend': self.quantum.backend,
             'database_type': 'sqlite' if 'sqlite' in self.database.url else 'other',
             'features_enabled': {
-                'quantum_internet': self.features.enable_quantum_internet,
                 'fault_tolerance': self.features.enable_fault_tolerance,
                 'websocket': self.features.enable_websocket,
                 'graphql': self.features.enable_graphql,
@@ -338,7 +320,6 @@ class UnifiedConfigManager:
             'apis_configured': {
                 'weather': self.api.weather_api_key is not None,
                 'geocoding': self.api.geocoding_api_key is not None,
-                'ibmq': self.quantum.ibmq_token is not None,
             }
         }
 

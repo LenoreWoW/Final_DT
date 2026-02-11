@@ -7,6 +7,7 @@ mathematical frameworks.
 
 Key Components:
 - Matrix Product Operators (MPO) for quantum system representation
+- Tree Tensor Networks (TTN) for hierarchical representations
 - Tensor network simulation with high fidelity
 - Fidelity optimization algorithms
 - Integration with existing quantum digital twin architecture
@@ -14,9 +15,14 @@ Key Components:
 
 from .matrix_product_operator import MatrixProductOperator
 
-# Note: Additional modules will be implemented in future iterations
-# For now, we have the core MPO implementation working
+try:
+    from .tree_tensor_network import TreeTensorNetwork
+except (ImportError, AttributeError) as e:
+    import logging
+    logging.debug(f"Tree tensor network not available: {e}")
+    TreeTensorNetwork = None
 
 __all__ = [
-    'MatrixProductOperator'
+    'MatrixProductOperator',
+    'TreeTensorNetwork',
 ]

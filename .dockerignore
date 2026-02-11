@@ -1,0 +1,82 @@
+# ─────────────────────────────────────────────────────────
+# Quantum Digital Twin Platform - Docker Ignore
+# ─────────────────────────────────────────────────────────
+
+# Version control
+.git
+.gitignore
+
+# Environment files (secrets must not be baked into images)
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.venv/
+venv/
+env/
+
+# Node / Frontend
+frontend/node_modules
+frontend/.next
+frontend/out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation and archives (not needed in container)
+docs/
+archive/
+_archive/
+backup/
+benchmark_results/
+final_deliverables/
+final_documentation/
+final_results/
+independent_study_pdf/
+project_documentation/
+*.md
+!README.md
+
+# Large / generated files
+*.pptx
+*.pdf
+*.log
+*.sqlite
+*.db
+
+# Docker (avoid recursive context)
+docker-compose.yml
+docker-compose.override.yml
+Dockerfile
+
+# Test artifacts
+tests/htmlcov/
+tests/.pytest_cache/
+playwright-report/
+test-results/
+
+# Misc
+Untitled
+*.bak

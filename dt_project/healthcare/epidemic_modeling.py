@@ -134,11 +134,21 @@ class EpidemicModelingQuantumTwin:
 
         # Initialize quantum modules
         if QUANTUM_AVAILABLE:
-            self.tree_tensor = TreeTensorNetwork(num_qubits=10)
-            self.neural_quantum = NeuralQuantumDigitalTwin(num_qubits=8, problem_type="classification")
-            self.qaoa_optimizer = QAOAOptimizer(num_qubits=8)
-            self.distributed = DistributedQuantumSystem(num_nodes=5)
-            self.uncertainty = VirtualQPU(num_qubits=6)
+            try:
+                from dt_project.quantum.algorithms.qaoa_optimizer import QAOAConfig
+                from dt_project.quantum.algorithms.uncertainty_quantification import VirtualQPUConfig
+                from dt_project.quantum.tensor_networks.tree_tensor_network import TTNConfig
+                
+                ttn_config = TTNConfig(num_qubits=10)
+                self.tree_tensor = TreeTensorNetwork(config=ttn_config)
+                self.neural_quantum = NeuralQuantumDigitalTwin(num_qubits=8)
+                qaoa_config = QAOAConfig(num_qubits=8, p_layers=2, max_iterations=100)
+                self.qaoa_optimizer = QAOAOptimizer(config=qaoa_config)
+                self.distributed = DistributedQuantumSystem()
+                qpu_config = VirtualQPUConfig(num_qubits=6)
+                self.uncertainty = VirtualQPU(config=qpu_config)
+            except Exception as e:
+                logger.warning(f"⚠️ Partial initialization: {e}")
 
             logger.info("✅ Epidemic Modeling Quantum Twin initialized")
         else:

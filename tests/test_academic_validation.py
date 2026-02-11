@@ -18,8 +18,13 @@ from dt_project.validation.academic_statistical_framework import (
     AcademicStatisticalValidator, 
     StatisticalResults, 
     PerformanceBenchmark,
-    QuantumState
 )
+
+# QuantumState was removed - create a mock for backward compatibility
+class QuantumState:
+    """Mock QuantumState for backward compatibility"""
+    def __init__(self, amplitudes=None):
+        self.amplitudes = amplitudes or [1.0, 0.0]
 
 class TestAcademicStatisticalValidator:
     """Comprehensive test suite for academic statistical validation"""

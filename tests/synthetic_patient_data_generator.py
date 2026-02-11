@@ -232,11 +232,19 @@ class SyntheticPatientDataGenerator:
                 'findings': 'Synthetic scan data'
             })
 
+        # Generate stage and tumor grade
+        stages = ["I", "II", "IIIA", "IIIB", "IV"]
+        grades = ["G1", "G2", "G3"]
+        stage = np.random.choice(stages, p=[0.15, 0.25, 0.20, 0.15, 0.25])
+        tumor_grade = np.random.choice(grades, p=[0.25, 0.50, 0.25])
+
         patient = PatientProfile(
             patient_id=f"PT_{uuid.uuid4().hex[:8]}",
             age=age,
             sex=sex,
             diagnosis=cancer_type,
+            stage=stage,
+            tumor_grade=tumor_grade,
             genomic_mutations=genomic_mutations,
             imaging_studies=imaging_studies,
             biomarkers=biomarkers
@@ -312,13 +320,11 @@ class SyntheticPatientDataGenerator:
         protein = TargetProtein(
             protein_id=protein_data['id'],
             protein_name=protein_data['name'],
-            protein_class=protein_data['class'],
-            sequence=sequence,
-            active_site_residues=active_site,
-            known_mutations=mutations
+            protein_type=protein_data['class'],
+            binding_site_residues=active_site,
         )
 
-        logger.info(f"🧪 Generated target protein: {protein.protein_id} ({protein.protein_class.value})")
+        logger.info(f"🧪 Generated target protein: {protein.protein_id} ({protein.protein_type.value})")
 
         return protein
 
@@ -367,18 +373,13 @@ class SyntheticPatientDataGenerator:
 
         image = MedicalImage(
             image_id=f"IMG_{uuid.uuid4().hex[:12]}",
-            patient_id=f"PT_{uuid.uuid4().hex[:8]}",
             modality=modality,
-            anatomical_region=region,
-            acquisition_date=study_date,
-            image_data=None,  # Would contain actual image array
-            metadata={
-                'slice_thickness_mm': slice_thickness,
-                'kvp': kvp,
-                'has_pathology': has_pathology,
-                'pathology_type': 'tumor' if has_pathology else None,
-                'synthetic': True
-            }
+            body_part=region.value if hasattr(region, 'value') else str(region),
+            image_array=np.random.rand(64, 64, 1),  # Simplified image array
+            resolution=(64, 64, 1),
+            patient_age=np.random.randint(20, 80),
+            patient_sex=np.random.choice(['M', 'F']),
+            acquisition_date=study_date
         )
 
         logger.info(f"🧪 Generated image: {modality.value} - {region.value} (pathology: {has_pathology})")
@@ -419,12 +420,16 @@ class SyntheticPatientDataGenerator:
 
                 variant = GeneticVariant(
                     variant_id=f"VAR_{uuid.uuid4().hex[:8]}",
-                    gene_symbol=group['gene'],
+                    gene=group['gene'],
+                    chromosome=f"chr{np.random.randint(1, 23)}",
+                    position=np.random.randint(1000000, 200000000),
+                    reference='G',
+                    alternate='A',
                     variant_type=var_type,
-                    hgvs_notation=f"{group['gene']}:{variant_name}",
-                    allele_frequency=np.random.uniform(0.3, 0.8),
-                    read_depth=np.random.randint(50, 500),
-                    variant_allele_frequency=np.random.uniform(0.3, 0.8)
+                    variant_allele_frequency=np.random.uniform(0.3, 0.8),
+                    depth=np.random.randint(50, 500),
+                    quality_score=np.random.uniform(30, 60),
+                    consequence=np.random.choice(['missense', 'nonsense', 'frameshift', 'synonymous'])
                 )
 
                 variants.append(variant)
@@ -508,17 +513,26 @@ class SyntheticPatientDataGenerator:
             total_beds = np.random.randint(100, 500)
             occupied = np.random.randint(int(total_beds * 0.5), int(total_beds * 0.9))
 
+            icu_beds = int(total_beds * 0.1)  # 10% ICU beds
+            available_beds = total_beds - occupied
+            available_icu = max(0, icu_beds - int(occupied * 0.1))
+            current_occupancy = occupied / total_beds
+            icu_occupancy = (icu_beds - available_icu) / icu_beds if icu_beds > 0 else 0.0
+            
             hospital = Hospital(
                 hospital_id=f"HOSP_{i+1:02d}",
-                name=hospital_names[i] if i < len(hospital_names) else f"Hospital {i+1}",
+                hospital_name=hospital_names[i] if i < len(hospital_names) else f"Hospital {i+1}",
                 location=(lat, lon),
                 total_beds=total_beds,
-                occupied_beds=occupied,
-                available_specialties=[
+                icu_beds=icu_beds,
+                available_beds=available_beds,
+                available_icu=available_icu,
+                specialties=[
                     spec for spec in SpecialtyType
                     if np.random.random() < 0.7  # 70% chance of having each specialty
                 ],
-                avg_wait_time_hours=np.random.uniform(2.0, 12.0)
+                current_occupancy=current_occupancy,
+                icu_occupancy=icu_occupancy,
             )
 
             hospitals.append(hospital)
@@ -534,10 +548,12 @@ class SyntheticPatientDataGenerator:
 
             patient = PendingPatient(
                 patient_id=f"PEND_{i+1:03d}",
-                location=(lat, lon),
-                acuity_level=random.choice(list(AcuityLevel)),
-                required_specialty=random.choice(list(SpecialtyType)),
-                arrival_time=datetime.now() + timedelta(minutes=np.random.randint(-60, 60))
+                current_location=f"HOSP_{np.random.randint(1, num_hospitals + 1):02d}",
+                acuity=random.choice(list(AcuityLevel)),
+                specialty_needed=random.choice(list(SpecialtyType)),
+                requires_icu=np.random.random() < 0.2,
+                requires_ventilator=np.random.random() < 0.1,
+                estimated_los_days=np.random.randint(1, 14)
             )
 
             pending_patients.append(patient)

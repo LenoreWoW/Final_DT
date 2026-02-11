@@ -1,351 +1,294 @@
 #!/usr/bin/env python3
 """
-🌌 QUANTUM DIGITAL TWIN PLATFORM - COMPLETE QUANTUM ECOSYSTEM
-============================================================
+🌌 QUANTUM DIGITAL TWIN PLATFORM
+================================
 
-The most comprehensive quantum computing platform ever created, featuring:
+Complete quantum computing platform with proven quantum advantages.
 
-🏭 UNIVERSAL QUANTUM DIGITAL TWIN FACTORY
-- Automatic quantum twin creation from ANY data type
-- Conversational AI for guided quantum solution development
-- Specialized domains (Financial, IoT, Healthcare, etc.)
-- Proven quantum advantages (98% sensing, 24% optimization)
-
-🧠 INTELLIGENT QUANTUM SYSTEMS
-- Universal data analysis and quantum advantage detection
-- Intelligent quantum advantage mapping with detailed predictions
-- Dynamic quantum twin generation based on user conversations
-- Comprehensive simulation engine for all quantum algorithms
-
-🎯 SPECIALIZED QUANTUM DOMAINS
-- Financial Services: Portfolio optimization, fraud detection, risk modeling
-- IoT & Smart Systems: Sensor fusion, predictive maintenance, network optimization
-- Healthcare & Life Sciences: Drug discovery, medical imaging, genomic analysis
-- Plus: Manufacturing, Energy, Transportation (expandable framework)
-
-💬 CONVERSATIONAL QUANTUM AI
-- Natural language quantum twin creation
-- Educational explanations for all expertise levels
-- Progressive requirement gathering
-- Real-time quantum advantage recommendations
-
-🌐 COMPLETE WEB PLATFORM
-- Beautiful web interface for all quantum capabilities
-- File upload with automatic quantum optimization
-- Real-time conversational chat interface
-- API endpoints for programmatic access
+Organized Structure:
+- core/         : Core quantum infrastructure
+- algorithms/   : Quantum algorithms (QAOA, Sensing, Optimization)
+- ml/           : Quantum machine learning
+- hardware/     : Real quantum hardware integration
+- tensor_networks/ : Tensor network algorithms
+- visualization/: Quantum visualization tools
 
 Author: Hassan Al-Sahli
-Purpose: Universal Quantum Computing Democratization
-Version: 1.0.0 - Complete Implementation
+Version: 2.1.0 - Reorganized Structure with Backward Compatibility
 """
 
-# Version information
-__version__ = "1.0.0"
+import sys
+import logging
+
+__version__ = "2.1.0"
 __author__ = "Hassan Al-Sahli"
-__title__ = "Universal Quantum Digital Twin Platform"
-__description__ = "Complete quantum computing platform with proven advantages"
 
-# Import main factory systems
+logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Core quantum functionality
+# =============================================================================
 try:
-    from .quantum_digital_twin_factory_master import (
-        quantum_digital_twin_factory_master,
-        QuantumDigitalTwinFactoryMaster,
-        ProcessingRequest,
-        ProcessingResult,
-        ProcessingMode
+    from .core import *
+    from .core.quantum_digital_twin_core import QuantumDigitalTwinCore
+    from .core.framework_comparison import QuantumFrameworkComparator, FrameworkType, AlgorithmType
+    from .core.async_quantum_backend import AsyncQuantumBackend
+    from .core.distributed_quantum_system import (
+        DistributedQuantumSystem,
+        DistributedQuantumSystemConfig,
+        TaskPriority,
+        create_distributed_quantum_system
     )
-    MASTER_FACTORY_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ Master Factory not available: {e}")
-    MASTER_FACTORY_AVAILABLE = False
+except (ImportError, AttributeError) as e:
+    logger.debug(f"Quantum core not fully available: {e}")
 
-# Import universal factory
+# =============================================================================
+# Quantum algorithms
+# =============================================================================
 try:
-    from .universal_quantum_factory import (
-        universal_quantum_factory,
-        UniversalQuantumFactory,
-        QuantumAdvantageType,
-        DataType,
-        UniversalSimulationResult
+    from .algorithms import *
+    from .algorithms.quantum_sensing_digital_twin import (
+        QuantumSensingDigitalTwin,
+        QuantumSensingTheory,
+        SensingModality,
+        PrecisionScaling,
+        SensingResult
     )
-    UNIVERSAL_FACTORY_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ Universal Factory not available: {e}")
-    UNIVERSAL_FACTORY_AVAILABLE = False
-
-# Import specialized domains
-try:
-    from .specialized_quantum_domains import (
-        specialized_domain_manager,
-        SpecializedDomain,
-        SpecializedDomainManager,
-        FinancialServicesFactory,
-        IoTSmartSystemsFactory,
-        HealthcareLifeSciencesFactory
+    from .algorithms.qaoa_optimizer import QAOAOptimizer, QAOAConfig, QAOAResult
+    from .algorithms.quantum_optimization import QuantumOptimizationDigitalTwin
+    from .algorithms.uncertainty_quantification import (
+        UncertaintyQuantificationFramework,
+        VirtualQPU,
+        VirtualQPUConfig,
+        UncertaintyType,
+        UQResult
     )
-    SPECIALIZED_DOMAINS_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ Specialized Domains not available: {e}")
-    SPECIALIZED_DOMAINS_AVAILABLE = False
-
-# Import conversational AI
-try:
-    from .conversational_quantum_ai import (
-        conversational_quantum_ai,
-        ConversationalQuantumAI,
-        ConversationState,
-        UserExpertise
+    from .algorithms.proven_quantum_advantage import ProvenQuantumAdvantageValidator
+    from .algorithms.real_quantum_algorithms import RealQuantumAlgorithms
+    from .algorithms.error_matrix_digital_twin import (
+        ErrorMatrixDigitalTwin,
+        ErrorMatrixResult,
+        ErrorCharacterization,
+        ErrorType,
+        create_error_matrix_twin
     )
-    CONVERSATIONAL_AI_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ Conversational AI not available: {e}")
-    CONVERSATIONAL_AI_AVAILABLE = False
+    from .algorithms.quantum_sensing_digital_twin import create_quantum_sensing_twin
+    from .algorithms.qaoa_optimizer import create_maxcut_qaoa
+    from .algorithms.uncertainty_quantification import create_uq_framework
+except (ImportError, AttributeError) as e:
+    logger.debug(f"Quantum algorithms not fully available: {e}")
 
-# Import intelligent mapper
+# =============================================================================
+# Quantum ML
+# =============================================================================
 try:
-    from .intelligent_quantum_mapper import (
-        intelligent_quantum_mapper,
-        IntelligentQuantumMapper,
-        QuantumAdvantageMapping,
-        IntelligentMappingResult
+    from .ml import *
+    from .ml.pennylane_quantum_ml import PennyLaneQuantumML, create_quantum_ml_classifier
+    from .ml.neural_quantum_digital_twin import NeuralQuantumDigitalTwin, create_neural_quantum_twin
+    from .ml.enhanced_quantum_digital_twin import EnhancedQuantumDigitalTwin
+except (ImportError, AttributeError) as e:
+    logger.debug(f"Quantum ML not fully available: {e}")
+
+# =============================================================================
+# Hardware integration
+# =============================================================================
+try:
+    from .hardware import *
+    from .hardware.real_hardware_backend import RealHardwareBackend
+    from .hardware.nisq_hardware_integration import (
+        NISQHardwareIntegration,
+        NISQHardwareIntegrator,
+        create_nisq_integrator,
+        NISQConfig
     )
-    INTELLIGENT_MAPPER_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ Intelligent Mapper not available: {e}")
-    INTELLIGENT_MAPPER_AVAILABLE = False
+except (ImportError, AttributeError) as e:
+    logger.debug(f"Quantum hardware not fully available: {e}")
 
-# Import core quantum algorithms
+# =============================================================================
+# Tensor networks
+# =============================================================================
 try:
-    from .quantum_digital_twin_core import QuantumDigitalTwinCore
-    CORE_ALGORITHMS_AVAILABLE = True
-    
-    # Try to import optional components
-    try:
-        from .quantum_optimization import QuantumOptimizer
-    except ImportError:
-        pass
-        
-    try:
-        from .quantum_benchmarking import QuantumBenchmarking
-    except ImportError:
-        pass
-        
-except ImportError as e:
-    print(f"⚠️ Core Algorithms not available: {e}")
-    CORE_ALGORITHMS_AVAILABLE = False
+    from .tensor_networks import *
+    from .tensor_networks.matrix_product_operator import MatrixProductOperator
+    from .tensor_networks.tree_tensor_network import TreeTensorNetwork, TTNConfig, create_ttn_for_benchmarking
+except (ImportError, AttributeError) as e:
+    logger.debug(f"Tensor networks not fully available: {e}")
 
-# System status check
-def get_platform_status():
-    """Get comprehensive platform status"""
-    
-    status = {
-        'platform_version': __version__,
-        'components': {
-            'master_factory': MASTER_FACTORY_AVAILABLE,
-            'universal_factory': UNIVERSAL_FACTORY_AVAILABLE,
-            'specialized_domains': SPECIALIZED_DOMAINS_AVAILABLE,
-            'conversational_ai': CONVERSATIONAL_AI_AVAILABLE,
-            'intelligent_mapper': INTELLIGENT_MAPPER_AVAILABLE,
-            'core_algorithms': CORE_ALGORITHMS_AVAILABLE
-        },
-        'capabilities': [],
-        'overall_status': 'unknown'
-    }
-    
-    # Determine capabilities
-    if MASTER_FACTORY_AVAILABLE:
-        status['capabilities'].extend([
-            'automatic_quantum_twin_creation',
-            'multi_mode_processing',
-            'comprehensive_result_analysis'
-        ])
-    
-    if UNIVERSAL_FACTORY_AVAILABLE:
-        status['capabilities'].extend([
-            'universal_data_processing',
-            'quantum_advantage_detection',
-            'simulation_engine'
-        ])
-    
-    if SPECIALIZED_DOMAINS_AVAILABLE:
-        status['capabilities'].extend([
-            'financial_services_optimization',
-            'iot_smart_systems',
-            'healthcare_life_sciences'
-        ])
-    
-    if CONVERSATIONAL_AI_AVAILABLE:
-        status['capabilities'].extend([
-            'natural_language_quantum_creation',
-            'intelligent_user_guidance',
-            'educational_explanations'
-        ])
-    
-    if INTELLIGENT_MAPPER_AVAILABLE:
-        status['capabilities'].extend([
-            'intelligent_quantum_mapping',
-            'advantage_prediction',
-            'implementation_roadmaps'
-        ])
-    
-    # Overall status
-    available_components = sum(status['components'].values())
-    total_components = len(status['components'])
-    
-    if available_components == total_components:
-        status['overall_status'] = 'fully_operational'
-    elif available_components >= total_components * 0.8:
-        status['overall_status'] = 'mostly_operational'
-    elif available_components >= total_components * 0.5:
-        status['overall_status'] = 'partially_operational'
-    else:
-        status['overall_status'] = 'limited_functionality'
-    
-    return status
+# =============================================================================
+# Visualization
+# =============================================================================
+try:
+    from .visualization import *
+except (ImportError, AttributeError) as e:
+    logger.debug(f"Visualization not fully available: {e}")
 
-# Convenience functions for easy access
-async def create_quantum_twin_from_data(data, **kwargs):
-    """🚀 Quick function to create quantum twin from any data"""
-    
-    if not MASTER_FACTORY_AVAILABLE:
-        raise ImportError("Master Factory not available")
-    
-    return await quantum_digital_twin_factory_master.create_quantum_twin_automatic(data, **kwargs)
+# =============================================================================
+# BACKWARD COMPATIBILITY: Create module-level aliases
+# These allow imports like: from dt_project.quantum.quantum_sensing_digital_twin import ...
+# =============================================================================
+try:
+    from .algorithms import quantum_sensing_digital_twin
+    sys.modules['dt_project.quantum.quantum_sensing_digital_twin'] = quantum_sensing_digital_twin
+except (ImportError, AttributeError):
+    pass
 
-async def start_quantum_conversation(user_id=None):
-    """💬 Quick function to start conversational quantum twin creation"""
-    
-    if not CONVERSATIONAL_AI_AVAILABLE:
-        raise ImportError("Conversational AI not available")
-    
-    return await conversational_quantum_ai.start_conversation(user_id)
+try:
+    from .algorithms import qaoa_optimizer
+    sys.modules['dt_project.quantum.qaoa_optimizer'] = qaoa_optimizer
+except (ImportError, AttributeError):
+    pass
 
-def get_supported_domains():
-    """🏢 Get all supported specialized domains"""
-    
-    if not SPECIALIZED_DOMAINS_AVAILABLE:
-        return []
-    
-    return specialized_domain_manager.get_available_domains()
+try:
+    from .algorithms import quantum_optimization
+    sys.modules['dt_project.quantum.quantum_optimization'] = quantum_optimization
+except (ImportError, AttributeError):
+    pass
 
-def get_quantum_advantages():
-    """⚡ Get all supported quantum advantages"""
-    
-    advantages = {}
-    
-    if UNIVERSAL_FACTORY_AVAILABLE:
-        # Get quantum advantages from universal factory
-        advantages.update({
-            'sensing_precision': {
-                'name': 'Quantum Sensing Precision',
-                'proven_advantage': '98%',
-                'description': 'Sub-shot-noise precision through quantum entanglement'
-            },
-            'optimization_speed': {
-                'name': 'Quantum Optimization Speed',
-                'proven_advantage': '24%',
-                'description': 'Combinatorial optimization acceleration'
-            },
-            'search_acceleration': {
-                'name': 'Quantum Search Acceleration',
-                'proven_advantage': '√N speedup',
-                'description': 'Unstructured search with Grover algorithm'
-            },
-            'pattern_recognition': {
-                'name': 'Quantum Pattern Recognition',
-                'proven_advantage': 'Exponential',
-                'description': 'Enhanced pattern recognition through quantum kernels'
-            }
-        })
-    
-    return advantages
+try:
+    from .algorithms import uncertainty_quantification
+    sys.modules['dt_project.quantum.uncertainty_quantification'] = uncertainty_quantification
+except (ImportError, AttributeError):
+    pass
 
-# Platform information
-PLATFORM_INFO = {
-    'name': __title__,
-    'version': __version__,
-    'author': __author__,
-    'description': __description__,
-    'capabilities': [
-        '🏭 Universal Quantum Digital Twin Factory',
-        '🧠 Intelligent Quantum Advantage Mapping',
-        '🏢 Specialized Domain Optimization',
-        '💬 Conversational Quantum AI',
-        '🌐 Complete Web Platform',
-        '⚡ Proven Quantum Advantages'
-    ],
-    'proven_advantages': {
-        'quantum_sensing': '98% precision improvement',
-        'quantum_optimization': '24% speedup improvement',
-        'quantum_search': '√N theoretical speedup',
-        'quantum_simulation': 'Exponential advantage for quantum systems'
-    },
-    'supported_domains': [
-        'Financial Services',
-        'IoT & Smart Systems', 
-        'Healthcare & Life Sciences',
-        'Manufacturing & Supply Chain',
-        'Energy & Utilities',
-        'General Purpose'
-    ]
-}
+try:
+    from .algorithms import proven_quantum_advantage
+    sys.modules['dt_project.quantum.proven_quantum_advantage'] = proven_quantum_advantage
+except (ImportError, AttributeError):
+    pass
 
-# Print platform status on import
-if __name__ != "__main__":
-    status = get_platform_status()
-    if status['overall_status'] == 'fully_operational':
-        print("🌌 ✅ Quantum Digital Twin Platform - FULLY OPERATIONAL")
-        print(f"🚀 Version {__version__} - All {len(status['components'])} components loaded")
-        print(f"⚡ {len(status['capabilities'])} quantum capabilities available")
-    else:
-        print(f"🌌 ⚠️ Quantum Platform - {status['overall_status'].upper()}")
-        available = sum(status['components'].values())
-        total = len(status['components'])
-        print(f"📊 {available}/{total} components available")
+try:
+    from .algorithms import real_quantum_algorithms
+    sys.modules['dt_project.quantum.real_quantum_algorithms'] = real_quantum_algorithms
+except (ImportError, AttributeError):
+    pass
 
-# Export main interfaces
+try:
+    from .algorithms import error_matrix_digital_twin
+    sys.modules['dt_project.quantum.error_matrix_digital_twin'] = error_matrix_digital_twin
+except (ImportError, AttributeError):
+    pass
+
+try:
+    from .core import quantum_digital_twin_core
+    sys.modules['dt_project.quantum.quantum_digital_twin_core'] = quantum_digital_twin_core
+except (ImportError, AttributeError):
+    pass
+
+try:
+    from .core import framework_comparison
+    sys.modules['dt_project.quantum.framework_comparison'] = framework_comparison
+except (ImportError, AttributeError):
+    pass
+
+try:
+    from .core import async_quantum_backend
+    sys.modules['dt_project.quantum.async_quantum_backend'] = async_quantum_backend
+except (ImportError, AttributeError):
+    pass
+
+try:
+    from .core import distributed_quantum_system
+    sys.modules['dt_project.quantum.distributed_quantum_system'] = distributed_quantum_system
+except (ImportError, AttributeError):
+    pass
+
+try:
+    from .ml import pennylane_quantum_ml
+    sys.modules['dt_project.quantum.pennylane_quantum_ml'] = pennylane_quantum_ml
+except (ImportError, AttributeError):
+    pass
+
+try:
+    from .ml import neural_quantum_digital_twin
+    sys.modules['dt_project.quantum.neural_quantum_digital_twin'] = neural_quantum_digital_twin
+except (ImportError, AttributeError):
+    pass
+
+try:
+    from .ml import enhanced_quantum_digital_twin
+    sys.modules['dt_project.quantum.enhanced_quantum_digital_twin'] = enhanced_quantum_digital_twin
+except (ImportError, AttributeError):
+    pass
+
+try:
+    from .hardware import nisq_hardware_integration
+    sys.modules['dt_project.quantum.nisq_hardware_integration'] = nisq_hardware_integration
+except (ImportError, AttributeError):
+    pass
+
+try:
+    from .hardware import real_hardware_backend
+    sys.modules['dt_project.quantum.real_hardware_backend'] = real_hardware_backend
+except (ImportError, AttributeError):
+    pass
+
+try:
+    from .tensor_networks import tree_tensor_network
+    sys.modules['dt_project.quantum.tree_tensor_network'] = tree_tensor_network
+except (ImportError, AttributeError):
+    pass
+
+try:
+    from .tensor_networks import matrix_product_operator
+    sys.modules['dt_project.quantum.matrix_product_operator'] = matrix_product_operator
+except (ImportError, AttributeError):
+    pass
+
 __all__ = [
-    # Version info
-    '__version__',
-    '__author__',
-    '__title__',
-    '__description__',
+    # Core
+    'QuantumDigitalTwinCore',
+    'QuantumFrameworkComparator',
+    'FrameworkType',
+    'AlgorithmType',
+    'AsyncQuantumBackend',
+    'DistributedQuantumSystem',
+    'DistributedQuantumSystemConfig',
+    'TaskPriority',
+    'create_distributed_quantum_system',
     
-    # Main factory systems
-    'quantum_digital_twin_factory_master',
-    'universal_quantum_factory',
-    'specialized_domain_manager',
-    'conversational_quantum_ai',
-    'intelligent_quantum_mapper',
+    # Algorithms
+    'QuantumSensingDigitalTwin',
+    'QuantumSensingTheory',
+    'SensingModality',
+    'PrecisionScaling',
+    'SensingResult',
+    'create_quantum_sensing_twin',
+    'QAOAOptimizer',
+    'QAOAConfig',
+    'QAOAResult',
+    'create_maxcut_qaoa',
+    'QuantumOptimizationDigitalTwin',
+    'UncertaintyQuantificationFramework',
+    'VirtualQPU',
+    'VirtualQPUConfig',
+    'UncertaintyType',
+    'UQResult',
+    'create_uq_framework',
+    'ProvenQuantumAdvantageValidator',
+    'RealQuantumAlgorithms',
+    'ErrorMatrixDigitalTwin',
+    'ErrorMatrixResult',
+    'ErrorCharacterization',
+    'ErrorType',
+    'create_error_matrix_twin',
     
-    # Core classes
-    'QuantumDigitalTwinFactoryMaster',
-    'UniversalQuantumFactory',
-    'SpecializedDomainManager',
-    'ConversationalQuantumAI',
-    'IntelligentQuantumMapper',
+    # ML
+    'PennyLaneQuantumML',
+    'create_quantum_ml_classifier',
+    'NeuralQuantumDigitalTwin',
+    'create_neural_quantum_twin',
+    'EnhancedQuantumDigitalTwin',
     
-    # Enums and data types
-    'QuantumAdvantageType',
-    'DataType',
-    'SpecializedDomain',
-    'ProcessingMode',
-    'UserExpertise',
+    # Hardware
+    'RealHardwareBackend',
+    'NISQHardwareIntegration',
+    'NISQHardwareIntegrator',
+    'NISQConfig',
+    'create_nisq_integrator',
     
-    # Result types
-    'ProcessingResult',
-    'UniversalSimulationResult',
-    'QuantumAdvantageMapping',
-    'IntelligentMappingResult',
-    
-    # Convenience functions
-    'create_quantum_twin_from_data',
-    'start_quantum_conversation',
-    'get_supported_domains',
-    'get_quantum_advantages',
-    'get_platform_status',
-    
-    # Platform info
-    'PLATFORM_INFO'
+    # Tensor Networks
+    'TreeTensorNetwork',
+    'TTNConfig',
+    'create_ttn_for_benchmarking',
+    'MatrixProductOperator',
 ]

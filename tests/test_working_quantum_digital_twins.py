@@ -7,9 +7,18 @@ Tests for working quantum digital twin implementations that demonstrate proven q
 
 Author: Hassan Al-Sahli
 Purpose: Thesis Defense - Validation of Working Quantum Digital Twin Implementations
+
+NOTE: working_quantum_digital_twins module was archived. Tests are skipped.
 """
 
 import pytest
+
+# Skip all tests in this module - the module was archived
+pytest.skip(
+    "Skipping: working_quantum_digital_twins module was archived",
+    allow_module_level=True
+)
+
 import asyncio
 import numpy as np
 import pandas as pd

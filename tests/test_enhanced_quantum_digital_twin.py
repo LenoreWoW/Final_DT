@@ -364,13 +364,12 @@ class TestTensorNetworks:
         
         assert quantum_state is not None
         assert quantum_state.num_qubits == 2
-        assert len(quantum_state.vector) == 4
+        assert len(quantum_state.state_vector) == 4
     
     def test_mpo_initialization(self):
         """Test MPO initialization"""
         config = TensorNetworkConfig(
-            bond_dimension=16,
-            num_qubits=4,
+            max_bond_dimension=16,
             target_fidelity=0.995
         )
         
@@ -381,14 +380,18 @@ class TestTensorNetworks:
     
     def test_mpo_representation_creation(self):
         """Test MPO representation creation"""
-        config = TensorNetworkConfig(num_qubits=4)
+        config = TensorNetworkConfig()
         mpo = MatrixProductOperator(config)
         
-        state_vector = np.random.rand(16) + 1j * np.random.rand(16)
-        state_vector = state_vector / np.linalg.norm(state_vector)
-        quantum_state = QuantumState(state_vector, 4)
+        # create_mpo_representation expects a dict, not a QuantumState
+        quantum_system = {
+            'type': 'test_system',
+            'num_qubits': 4,
+            'hamiltonian': None,
+            'gates': []
+        }
         
-        mpo.create_mpo_representation(quantum_state)
+        mpo.create_mpo_representation(quantum_system)
         
         assert mpo is not None
 

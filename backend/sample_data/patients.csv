@@ -1,0 +1,11 @@
+patient_id,age,tumor_type,marker_A,marker_B,treatment,outcome_score
+P001,45,melanoma,0.82,0.34,immunotherapy,0.78
+P002,62,breast,0.45,0.91,chemotherapy,0.65
+P003,38,lung,0.73,0.56,radiation,0.71
+P004,55,melanoma,0.91,0.28,immunotherapy,0.85
+P005,48,breast,0.38,0.87,targeted,0.72
+P006,67,lung,0.65,0.42,chemotherapy,0.58
+P007,42,melanoma,0.88,0.31,combination,0.90
+P008,59,breast,0.42,0.93,hormone,0.69
+P009,51,lung,0.77,0.48,immunotherapy,0.75
+P010,44,melanoma,0.85,0.36,targeted,0.82

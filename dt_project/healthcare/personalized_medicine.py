@@ -57,11 +57,13 @@ class CancerType(Enum):
     """Supported cancer types for personalized treatment"""
     BREAST = "breast_cancer"
     LUNG = "lung_cancer"
+    NSCLC = "lung_cancer"  # Alias for Non-Small Cell Lung Cancer
     COLORECTAL = "colorectal_cancer"
     PROSTATE = "prostate_cancer"
     MELANOMA = "melanoma"
     LEUKEMIA = "leukemia"
     LYMPHOMA = "lymphoma"
+    PANCREATIC = "pancreatic_cancer"  # Added for completeness
     OTHER = "other"
 
 
@@ -174,11 +176,12 @@ class PersonalizedTreatmentPlan:
     prognosis: str
     treatment_urgency: str
     monitoring_protocol: List[str]
+    confidence_score: float = 0.85  # Overall treatment confidence
 
     # Quantum metrics
-    quantum_modules_used: List[str]
-    computation_time_seconds: float
-    quantum_advantage_summary: Dict[str, str]
+    quantum_modules_used: List[str] = field(default_factory=list)
+    computation_time_seconds: float = 0.0
+    quantum_advantage_summary: Dict[str, str] = field(default_factory=dict)
 
 
 class PersonalizedMedicineQuantumTwin:
@@ -201,28 +204,32 @@ class PersonalizedMedicineQuantumTwin:
 
         # Initialize quantum modules
         if QUANTUM_AVAILABLE:
-            # Quantum sensing for biomarker detection
-            self.quantum_sensing = QuantumSensingDigitalTwin(
-                num_qubits=4,
-                modality=SensingModality.PHASE_ESTIMATION
-            )
+            try:
+                from dt_project.quantum.algorithms.qaoa_optimizer import QAOAConfig
+                from dt_project.quantum.algorithms.uncertainty_quantification import VirtualQPUConfig
+                from dt_project.quantum.tensor_networks.tree_tensor_network import TTNConfig
+                
+                # Quantum sensing for biomarker detection
+                self.quantum_sensing = QuantumSensingDigitalTwin(n_qubits=4)
 
-            # Neural-quantum for medical imaging
-            self.neural_quantum = NeuralQuantumDigitalTwin(
-                num_qubits=8,
-                problem_type="classification"
-            )
+                # Neural-quantum for medical imaging
+                self.neural_quantum = NeuralQuantumDigitalTwin(num_qubits=8)
 
-            # QAOA for treatment optimization
-            self.qaoa_optimizer = QAOAOptimizer(num_qubits=6)
-
-            # Tree-tensor network for multi-omics
-            self.tree_tensor = TreeTensorNetwork(num_qubits=10)
-
-            # Uncertainty quantification
-            self.uncertainty = VirtualQPU(num_qubits=4)
-
-            logger.info("✅ Personalized Medicine Quantum Twin initialized with all modules")
+                # QAOA for treatment optimization
+                qaoa_config = QAOAConfig(num_qubits=6, p_layers=2, max_iterations=100)
+                self.qaoa_optimizer = QAOAOptimizer(config=qaoa_config)
+                
+                # Tree-tensor network for multi-omics
+                ttn_config = TTNConfig(num_qubits=10)
+                self.tree_tensor = TreeTensorNetwork(config=ttn_config)
+                
+                # Uncertainty quantification
+                qpu_config = VirtualQPUConfig(num_qubits=4)
+                self.uncertainty = VirtualQPU(config=qpu_config)
+                
+                logger.info("✅ Personalized Medicine Quantum Twin initialized with all modules")
+            except Exception as e:
+                logger.warning(f"⚠️ Partial initialization: {e}")
         else:
             logger.warning("⚠️ Running in simulation mode - quantum modules not available")
 

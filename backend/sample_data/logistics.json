@@ -1,0 +1,16 @@
+{
+  "bases": [
+    {"id": "B1", "name": "Alpha", "lat": 33.5, "lng": 44.3, "capacity": 500},
+    {"id": "B2", "name": "Bravo", "lat": 34.1, "lng": 45.0, "capacity": 300},
+    {"id": "B3", "name": "Charlie", "lat": 33.8, "lng": 44.7, "capacity": 400},
+    {"id": "B4", "name": "Delta", "lat": 34.5, "lng": 45.5, "capacity": 250},
+    {"id": "B5", "name": "Echo", "lat": 33.2, "lng": 44.0, "capacity": 350}
+  ],
+  "routes": [
+    {"from": "B1", "to": "B2", "distance_km": 85, "risk_level": 0.3},
+    {"from": "B1", "to": "B3", "distance_km": 42, "risk_level": 0.1},
+    {"from": "B2", "to": "B4", "distance_km": 67, "risk_level": 0.5},
+    {"from": "B3", "to": "B5", "distance_km": 55, "risk_level": 0.2},
+    {"from": "B4", "to": "B5", "distance_km": 78, "risk_level": 0.4}
+  ]
+}

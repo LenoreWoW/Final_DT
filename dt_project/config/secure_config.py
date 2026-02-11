@@ -68,7 +68,7 @@ class SecureConfigManager:
         }
         
         # Validate API keys (don't log them)
-        api_keys = ['GEOCODING_API_KEY', 'IBMQ_TOKEN']
+        api_keys = ['GEOCODING_API_KEY']
         for key in api_keys:
             value = os.getenv(key)
             if value and len(value) > 10:  # Basic validation

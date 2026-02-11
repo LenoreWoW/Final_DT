@@ -148,12 +148,28 @@ class AcademicStatisticalValidator:
         Uses Welch's t-test for unequal variances, more robust than standard t-test
         """
         try:
+            # Handle edge case: identical data (zero variance)
+            # If both datasets are identical, there's no significant difference
+            if np.array_equal(experimental_data, control_data):
+                return 1.0  # Not significant
+            
+            # If either dataset has zero variance, can't compute t-test meaningfully
+            if np.std(experimental_data) == 0 and np.std(control_data) == 0:
+                if np.mean(experimental_data) == np.mean(control_data):
+                    return 1.0  # No difference, not significant
+                else:
+                    return 0.0  # Completely different, highly significant
+            
             # Welch's t-test (unequal variances)
             statistic, p_value = stats.ttest_ind(
                 experimental_data, 
                 control_data, 
                 equal_var=False
             )
+            
+            # Handle nan p-values (can occur with zero variance)
+            if np.isnan(p_value):
+                return 1.0  # Conservative: not significant
             
             return p_value
             
@@ -211,17 +227,38 @@ class AcademicStatisticalValidator:
             mean_exp = np.mean(experimental_data)
             mean_ctrl = np.mean(control_data)
             
+            # Handle identical data case
+            if mean_exp == mean_ctrl:
+                return 0.0  # No effect when means are identical
+            
             # Pooled standard deviation
             n_exp = len(experimental_data)
             n_ctrl = len(control_data)
             
+            var_exp = np.var(experimental_data, ddof=1)
+            var_ctrl = np.var(control_data, ddof=1)
+            
+            # Handle zero variance case
+            if var_exp == 0 and var_ctrl == 0:
+                # Both datasets have zero variance (constant values)
+                # If means differ, effect is infinite - use a large value
+                return 0.0 if mean_exp == mean_ctrl else 10.0
+            
             pooled_std = np.sqrt(
-                ((n_exp - 1) * np.var(experimental_data, ddof=1) + 
-                 (n_ctrl - 1) * np.var(control_data, ddof=1)) / 
+                ((n_exp - 1) * var_exp + 
+                 (n_ctrl - 1) * var_ctrl) / 
                 (n_exp + n_ctrl - 2)
             )
             
+            # Handle zero pooled_std
+            if pooled_std == 0:
+                return 0.0
+            
             cohens_d = (mean_exp - mean_ctrl) / pooled_std
+            
+            # Handle nan
+            if np.isnan(cohens_d):
+                return 0.0
             
             return abs(cohens_d)  # Return absolute value
             

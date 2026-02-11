@@ -1,9 +1,18 @@
 """
 Comprehensive tests for web interface core functionality.
 Tests Flask application, routes, and web security features.
+
+NOTE: web_interface module was archived. Tests are skipped.
 """
 
 import pytest
+
+# Skip all tests in this module - the web_interface was archived
+pytest.skip(
+    "Skipping: web_interface module was archived",
+    allow_module_level=True
+)
+
 import json
 import tempfile
 import os

@@ -188,6 +188,9 @@ class GenomicAnalysisResult:
     genes_analyzed_simultaneously: int
     pathway_interactions_modeled: int
     quantum_advantage_summary: Dict[str, str]
+    
+    # Overall confidence
+    confidence_score: float = 0.85
 
 
 class GenomicAnalysisQuantumTwin:
@@ -210,22 +213,29 @@ class GenomicAnalysisQuantumTwin:
 
         # Initialize quantum modules
         if QUANTUM_AVAILABLE:
-            # Tree-tensor network for multi-gene modeling
-            self.tree_tensor = TreeTensorNetwork(num_qubits=12)
+            try:
+                from dt_project.quantum.algorithms.qaoa_optimizer import QAOAConfig
+                from dt_project.quantum.algorithms.uncertainty_quantification import VirtualQPUConfig
+                from dt_project.quantum.tensor_networks.tree_tensor_network import TTNConfig
+                
+                # Tree-tensor network for multi-gene modeling
+                ttn_config = TTNConfig(num_qubits=12)
+                self.tree_tensor = TreeTensorNetwork(config=ttn_config)
 
-            # Neural-quantum for drug-gene interactions
-            self.neural_quantum = NeuralQuantumDigitalTwin(
-                num_qubits=10,
-                problem_type="classification"
-            )
+                # Neural-quantum for drug-gene interactions
+                self.neural_quantum = NeuralQuantumDigitalTwin(num_qubits=10)
 
-            # QAOA for therapy optimization
-            self.qaoa_optimizer = QAOAOptimizer(num_qubits=8)
-
-            # Uncertainty quantification
-            self.uncertainty = VirtualQPU(num_qubits=6)
-
-            logger.info("✅ Genomic Analysis Quantum Twin initialized")
+                # QAOA for therapy optimization
+                qaoa_config = QAOAConfig(num_qubits=8, p_layers=2, max_iterations=100)
+                self.qaoa_optimizer = QAOAOptimizer(config=qaoa_config)
+                
+                # Uncertainty quantification
+                qpu_config = VirtualQPUConfig(num_qubits=6)
+                self.uncertainty = VirtualQPU(config=qpu_config)
+                
+                logger.info("✅ Genomic Analysis Quantum Twin initialized")
+            except Exception as e:
+                logger.warning(f"⚠️ Partial initialization: {e}")
         else:
             logger.warning("⚠️ Running in simulation mode")
 
@@ -371,8 +381,9 @@ class GenomicAnalysisQuantumTwin:
                 # Check if specific variant is actionable
                 variant_key = f"{variant.gene}_{variant.amino_acid_change}"
 
-                if variant_key in gene_info.get('actionable_variants', []) or \
-                   variant.gene in gene_info.get('any_mutation_actionable', []):
+                any_mutation = gene_info.get('any_mutation_actionable', False)
+                actionable_variants = gene_info.get('actionable_variants', [])
+                if variant_key in actionable_variants or (isinstance(any_mutation, bool) and any_mutation):
 
                     # Create actionable mutation
                     actionable.append(ActionableMutation(

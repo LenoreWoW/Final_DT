@@ -174,13 +174,20 @@ class HospitalOperationsQuantumTwin:
 
         # Initialize quantum modules
         if QUANTUM_AVAILABLE:
-            self.qaoa_optimizer = QAOAOptimizer(num_qubits=10)
-            self.distributed = DistributedQuantumSystem(num_nodes=8)
-            self.quantum_sensing = QuantumSensingDigitalTwin(num_qubits=6)
-            self.uncertainty = VirtualQPU(num_qubits=6)
-            self.neural_quantum = NeuralQuantumDigitalTwin(num_qubits=8, problem_type="regression")
-
-            logger.info("✅ Hospital Operations Quantum Twin initialized")
+            try:
+                from dt_project.quantum.algorithms.qaoa_optimizer import QAOAConfig
+                from dt_project.quantum.algorithms.uncertainty_quantification import VirtualQPUConfig
+                
+                qaoa_config = QAOAConfig(num_qubits=10, p_layers=2, max_iterations=100)
+                self.qaoa_optimizer = QAOAOptimizer(config=qaoa_config)
+                self.distributed = DistributedQuantumSystem()
+                self.quantum_sensing = QuantumSensingDigitalTwin(n_qubits=6)
+                qpu_config = VirtualQPUConfig(num_qubits=6)
+                self.uncertainty = VirtualQPU(config=qpu_config)
+                self.neural_quantum = NeuralQuantumDigitalTwin(num_qubits=8)
+                logger.info("✅ Hospital Operations Quantum Twin initialized")
+            except Exception as e:
+                logger.warning(f"⚠️ Partial quantum initialization: {e}")
         else:
             logger.warning("⚠️ Running in simulation mode")
 

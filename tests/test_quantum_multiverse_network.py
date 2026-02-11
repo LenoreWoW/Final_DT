@@ -1,9 +1,18 @@
 """
 Comprehensive tests for quantum multiverse network implementation.
 Tests digital twins across parallel universes using Many-Worlds Interpretation.
+
+NOTE: This module was archived as experimental. Tests are skipped.
 """
 
 import pytest
+
+# Skip all tests in this module - the module was archived
+pytest.skip(
+    "Skipping: quantum_multiverse_network was archived as experimental",
+    allow_module_level=True
+)
+
 import numpy as np
 import asyncio
 import json

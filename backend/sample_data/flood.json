@@ -1,0 +1,13 @@
+{
+  "grid_size": {"rows": 10, "cols": 10},
+  "elevation": [[10,12,15,18,20,22,19,16,13,11],[9,11,14,17,21,23,20,17,14,10],[8,10,13,16,19,21,18,15,12,9],[7,9,12,15,18,20,17,14,11,8],[6,8,11,14,17,19,16,13,10,7],[5,7,10,13,16,18,15,12,9,6],[6,8,11,14,17,19,16,13,10,7],[7,9,12,15,18,20,17,14,11,8],[8,10,13,16,19,21,18,15,12,9],[9,11,14,17,20,22,19,16,13,10]],
+  "infrastructure": [
+    {"type": "hospital", "name": "Central Hospital", "row": 2, "col": 3, "critical": true},
+    {"type": "hospital", "name": "East Clinic", "row": 7, "col": 8, "critical": true},
+    {"type": "road", "name": "Main Highway", "cells": [[0,5],[1,5],[2,5],[3,5],[4,5]]},
+    {"type": "bridge", "name": "River Bridge", "row": 5, "col": 5, "critical": true},
+    {"type": "shelter", "name": "Evac Point A", "row": 0, "col": 9, "capacity": 500}
+  ],
+  "drainage_capacity": 0.6,
+  "rainfall_mm_hr": 150
+}

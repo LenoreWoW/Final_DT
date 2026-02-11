@@ -313,7 +313,7 @@ class TestSyntheticDataGeneration:
         assert protein is not None
         assert protein.protein_id == "EGFR"
         assert protein.protein_name is not None
-        assert len(protein.active_site_residues) > 0
+        assert len(protein.binding_site_residues) > 0  # Fixed field name
 
         logger.info("✅ Target protein generated")
         logger.info(f"   Protein: {protein.protein_id} - {protein.protein_name}")
@@ -358,9 +358,10 @@ class TestDataStructures:
             age=65,
             sex="F",
             diagnosis=CancerType.BREAST,
+            stage="II",
+            tumor_grade="G2",
             genomic_mutations=[],
             imaging_studies=[],
-            biomarkers={}
         )
 
         assert patient.patient_id == "TEST_001"
@@ -371,6 +372,7 @@ class TestDataStructures:
 
     def test_medical_image_structure(self):
         """Test MedicalImage data structure"""
+        import numpy as np
         from dt_project.healthcare.medical_imaging import (
             MedicalImage,
             ImageModality,
@@ -379,17 +381,15 @@ class TestDataStructures:
 
         image = MedicalImage(
             image_id="IMG_001",
-            patient_id="PT_001",
             modality=ImageModality.CT,
-            anatomical_region=AnatomicalRegion.CHEST,
-            acquisition_date=datetime.now(),
-            image_data=None,
-            metadata={}
+            body_part="chest",
+            image_array=np.zeros((256, 256, 1)),
+            resolution=(256, 256, 1),
         )
 
         assert image.image_id == "IMG_001"
         assert image.modality == ImageModality.CT
-        assert image.anatomical_region == AnatomicalRegion.CHEST
+        assert image.body_part == "chest"
 
         logger.info("✅ MedicalImage structure validated")
 

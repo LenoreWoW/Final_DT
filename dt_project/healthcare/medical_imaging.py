@@ -53,11 +53,29 @@ logger = logging.getLogger(__name__)
 class ImagingModality(Enum):
     """Medical imaging modality types"""
     XRAY = "x-ray"
+    X_RAY = "x-ray"  # Alias for backward compatibility
     CT = "ct_scan"
     MRI = "mri"
     PET = "pet_scan"
     ULTRASOUND = "ultrasound"
     MAMMOGRAPHY = "mammography"
+
+
+# Backward compatibility alias
+ImageModality = ImagingModality
+
+
+class AnatomicalRegion(Enum):
+    """Anatomical regions for medical imaging"""
+    HEAD = "head"
+    NECK = "neck"
+    CHEST = "chest"
+    ABDOMEN = "abdomen"
+    PELVIS = "pelvis"
+    SPINE = "spine"
+    UPPER_EXTREMITY = "upper_extremity"
+    LOWER_EXTREMITY = "lower_extremity"
+    WHOLE_BODY = "whole_body"
 
 
 class PathologyType(Enum):
@@ -180,28 +198,30 @@ class MedicalImagingQuantumTwin:
 
         # Initialize quantum modules
         if QUANTUM_AVAILABLE:
-            # Quantum CNN for image classification
-            self.quantum_cnn = PennyLaneQuantumML(
-                num_qubits=10,
-                num_layers=6
-            )
+            try:
+                from dt_project.quantum.algorithms.uncertainty_quantification import VirtualQPUConfig
+                from dt_project.quantum.ml.pennylane_quantum_ml import PennyLaneConfig
+                
+                # Quantum CNN for image classification
+                pl_config = PennyLaneConfig(num_qubits=10, num_layers=6)
+                self.quantum_cnn = PennyLaneQuantumML(config=pl_config)
 
-            # Neural-quantum for pattern recognition
-            self.neural_quantum = NeuralQuantumDigitalTwin(
-                num_qubits=8,
-                problem_type="classification"
-            )
+                # Neural-quantum for pattern recognition
+                self.neural_quantum = NeuralQuantumDigitalTwin(num_qubits=8)
 
-            # Quantum sensing for subtle features
-            self.quantum_sensing = QuantumSensingDigitalTwin(num_qubits=6)
-
-            # Uncertainty quantification
-            self.uncertainty = VirtualQPU(num_qubits=4)
-
-            # Holographic visualization
-            self.holographic_viz = QuantumHolographicManager()
-
-            logger.info("✅ Medical Imaging Quantum Twin initialized")
+                # Quantum sensing for subtle features
+                self.quantum_sensing = QuantumSensingDigitalTwin(n_qubits=6)
+                
+                # Uncertainty quantification
+                qpu_config = VirtualQPUConfig(num_qubits=4)
+                self.uncertainty = VirtualQPU(config=qpu_config)
+                
+                # Holographic visualization
+                self.holographic_viz = QuantumHolographicManager()
+                
+                logger.info("✅ Medical Imaging Quantum Twin initialized")
+            except Exception as e:
+                logger.warning(f"⚠️ Partial initialization: {e}")
         else:
             logger.warning("⚠️ Running in simulation mode")
 
