@@ -1,0 +1,12 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Digital twin technology has emerged as a transformative paradigm for modeling, monitoring, and optimizing complex systems across diverse domains. However, existing digital twin platforms remain domain-specific, requiring extensive manual configuration and deep technical expertise. Simultaneously, quantum computing offers computational advantages for optimization, simulation, and machine learning tasks, yet remains largely inaccessible to practitioners outside the quantum computing community. This thesis presents QTwin, a conversational quantum-powered framework for universal digital twin generation that bridges both accessibility gaps.
+
+The QTwin platform accepts natural language system descriptions through a conversational interface powered by a spaCy-based NLP pipeline and automatically generates quantum-enhanced digital twins for any user-specified domain. The framework employs six quantum algorithmic strategies---Quantum Approximate Optimization Algorithm (QAOA), Variational Quantum Eigensolver (VQE), Variational Quantum Classifier (VQC), quantum simulation, tree tensor networks, and quantum autoencoders---implemented on the Qiskit Aer simulator. A domain-agnostic problem decomposition engine dynamically selects and composes quantum algorithms based on extracted system characteristics, eliminating the need for domain-specific code.
+
+The framework is validated through comprehensive benchmarks across six healthcare sub-domains: personalized medicine, drug discovery, medical imaging, genomic analysis, epidemic modeling, and hospital operations. Results demonstrate consistent quantum advantage, including a 1000$\times$ speedup in drug screening, $+13\%$ accuracy improvement in medical imaging classification, a 720$\times$ acceleration in epidemic simulation, and a 73\% reduction in hospital wait times. Cross-domain generalization is validated across military logistics, sports performance, and environmental disaster response scenarios without domain-specific modifications. All quantum computations were performed on the Qiskit Aer statevector simulator; validation on physical quantum hardware is identified as a primary direction for future work. All quantum circuits are exportable in OpenQASM format for reproducibility and future hardware deployment.
+
+\textbf{Keywords:} Digital Twin, Quantum Computing, Conversational AI, QAOA, Natural Language Processing, Healthcare, Qiskit
+
+\newpage
