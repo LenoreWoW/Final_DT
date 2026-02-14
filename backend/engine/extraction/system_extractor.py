@@ -83,17 +83,21 @@ class SystemExtractor:
             "olympics", "sports", "football", "basketball", "soccer"
         ],
         DomainType.MILITARY: [
-            "battalion", "troops", "defense", "operation", "combat",
+            "battalion", "troops", "defense", "combat",
             "soldier", "army", "navy", "mission", "enemy", "strategic",
-            "tactical", "weapon", "ammunition", "headquarters", "base",
-            "reconnaissance", "intelligence", "deployment"
+            "tactical", "weapon", "ammunition",
+            "reconnaissance", "intelligence", "deployment",
+            "convoy", "depot", "military", "base", "supply",
+            "threat"
         ],
         DomainType.ENVIRONMENT: [
             "wildfire", "ecosystem", "species", "population", "climate",
             "wildlife", "forest", "ocean", "temperature", "carbon",
             "pollution", "conservation", "habitat", "biodiversity",
-            "extinction", "sustainable", "renewable", "weather", 
-            "acres", "spread", "tanker", "firefighter"
+            "extinction", "sustainable", "renewable", "weather",
+            "acres", "spread", "tanker", "firefighter",
+            "monitoring", "river", "flood", "emissions",
+            "deforestation", "environmental"
         ],
         DomainType.FINANCE: [
             "stock", "portfolio", "investment", "market", "trading", "asset",

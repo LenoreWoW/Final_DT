@@ -14,7 +14,7 @@ import sys
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -255,7 +255,7 @@ class TwinGenerator:
                 ),
             },
             execution_time_seconds=execution_time,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
     
     def _run_quantum_simulation(

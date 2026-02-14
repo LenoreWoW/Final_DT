@@ -9,7 +9,7 @@ import sys
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -219,7 +219,7 @@ async def get_all_benchmarks():
             speedup=data["speedup"],
             improvement=data["improvement"],
             details=data["details"],
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         benchmarks.append(benchmark)
         
@@ -261,7 +261,7 @@ async def get_benchmark(module_id: str):
         speedup=data["speedup"],
         improvement=data["improvement"],
         details=data["details"],
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
 
 

@@ -8,7 +8,7 @@ Endpoints:
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -90,7 +90,7 @@ async def register(request: UserRegisterRequest, db: Session = Depends(get_db)):
         username=request.username,
         email=request.email,
         hashed_password=get_password_hash(request.password),
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.commit()

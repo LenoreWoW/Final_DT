@@ -8,7 +8,7 @@ Provides:
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
@@ -65,7 +65,7 @@ try:
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
         """Create a signed JWT token."""
         to_encode = data.copy()
-        expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
         to_encode.update({"exp": expire})
         return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -83,7 +83,7 @@ except ImportError:
         def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
             """Create a signed JWT token (PyJWT fallback)."""
             to_encode = data.copy()
-            expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+            expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
             to_encode.update({"exp": expire})
             return pyjwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -106,7 +106,7 @@ except ImportError:
         def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
             """Create a stub token (no JWT library available)."""
             to_encode = data.copy()
-            expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+            expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
             to_encode.update({"exp": expire.isoformat()})
             return base64.urlsafe_b64encode(json.dumps(to_encode).encode()).decode()
 
@@ -115,7 +115,7 @@ except ImportError:
             try:
                 payload = json.loads(base64.urlsafe_b64decode(token.encode()))
                 exp = datetime.fromisoformat(payload["exp"])
-                if exp < datetime.utcnow():
+                if exp < datetime.now(timezone.utc):
                     raise _StubJWTError("Token expired")
                 return payload
             except Exception as exc:

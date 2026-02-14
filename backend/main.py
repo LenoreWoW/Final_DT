@@ -10,7 +10,7 @@ import time
 import uuid
 import logging
 from collections import defaultdict
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from pathlib import Path
 from typing import Dict, Optional, Set
 
@@ -243,7 +243,7 @@ async def websocket_endpoint(websocket: WebSocket, twin_id: str):
     await ws_manager.send_personal(websocket, {
         "type": "connected",
         "twin_id": twin_id,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 
     try:
@@ -265,13 +265,13 @@ async def websocket_endpoint(websocket: WebSocket, twin_id: str):
             if action == "ping":
                 await ws_manager.send_personal(websocket, {
                     "type": "pong",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
             else:
                 await ws_manager.send_personal(websocket, {
                     "type": "ack",
                     "received_action": action,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
 
     except WebSocketDisconnect:

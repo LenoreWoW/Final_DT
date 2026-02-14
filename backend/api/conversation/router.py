@@ -5,7 +5,7 @@ Uses the SystemExtractor from the engine layer for all extraction work.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -62,8 +62,8 @@ async def send_message(
             description=request.message[:500],
             status=TwinStatus.DRAFT.value,
             state={"entities": {}, "time_step": 0, "metrics": {}},
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         db.add(db_twin)
         db.commit()
@@ -79,8 +79,8 @@ async def send_message(
             id=str(uuid.uuid4()),
             twin_id=db_twin.id,
             messages=[],
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         db.add(db_conversation)
 
@@ -88,7 +88,7 @@ async def send_message(
     user_message = {
         "role": "user",
         "content": request.message,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     messages = db_conversation.messages or []
     messages.append(user_message)
@@ -127,16 +127,16 @@ async def send_message(
     assistant_message = {
         "role": "assistant",
         "content": response_text,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     messages.append(assistant_message)
 
     # Update conversation and twin
     db_conversation.messages = messages
-    db_conversation.updated_at = datetime.utcnow()
+    db_conversation.updated_at = datetime.now(timezone.utc)
 
     db_twin.extracted_system = extracted_info.model_dump() if extracted_info else None
-    db_twin.updated_at = datetime.utcnow()
+    db_twin.updated_at = datetime.now(timezone.utc)
 
     # Auto-detect domain
     if not db_twin.domain and extracted_info:

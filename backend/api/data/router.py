@@ -10,7 +10,7 @@ Endpoints:
 import io
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
@@ -346,5 +346,5 @@ async def upload_data(file: UploadFile = File(...)):
         suggested_mappings=suggested_mappings,
         preview=preview,
         detected_domain=detected_domain,
-        uploaded_at=datetime.utcnow(),
+        uploaded_at=datetime.now(timezone.utc),
     )

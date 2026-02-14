@@ -5,7 +5,7 @@ Integrates with the TwinGenerator engine for simulation and query execution.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -49,7 +49,7 @@ async def create_twin(twin_data: TwinCreate, db: Session = Depends(get_db)):
     through conversation, it transitions to GENERATING and then ACTIVE.
     """
     twin_id = str(uuid.uuid4())
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     db_twin = TwinModel(
         id=twin_id,
@@ -126,7 +126,7 @@ async def update_twin(
         else:
             setattr(db_twin, field, value)
     
-    db_twin.updated_at = datetime.utcnow()
+    db_twin.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_twin)
     
@@ -235,7 +235,7 @@ async def run_simulation(
                 "speedup": 1000,
             },
             execution_time_seconds=execution_time,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
     # Override twin_id so it matches the actual twin (generator creates its own)
