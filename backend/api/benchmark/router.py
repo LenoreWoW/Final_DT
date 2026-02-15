@@ -13,8 +13,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import logging
+
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
@@ -488,7 +492,7 @@ async def _run_classical(module_id: str, parameters: Dict[str, Any]) -> Dict[str
         )
         return _sanitize_for_json(result)
     except Exception as e:
-        print(f"Classical baseline error/timeout for {module_id}: {e}")
+        logger.warning("Classical baseline error/timeout for %s: %s", module_id, e)
         return {
             "method": f"classical_{module_id}",
             "execution_time": _BENCHMARK_TIMEOUT,
@@ -507,7 +511,7 @@ async def _run_quantum(module_id: str, parameters: Dict[str, Any]) -> Dict[str, 
         )
         return result
     except Exception as exc:
-        print(f"Quantum module error/timeout for {module_id}: {exc}")
+        logger.warning("Quantum module error/timeout for %s: %s", module_id, exc)
 
     # Simulated quantum result (fallback)
     return {

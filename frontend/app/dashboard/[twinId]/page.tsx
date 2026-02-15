@@ -126,8 +126,8 @@ export default function DashboardPage() {
       const newScenario: ScenarioResult = {
         id: scenarios.length + 1,
         description: scenarioInput,
-        outcome: response.confidence ?? Math.random() * 100,
-        confidence: response.confidence ?? 0.85,
+        outcome: response.confidence ? response.confidence * 100 : 75,
+        confidence: response.confidence ?? 0.75,
       };
       setScenarios((prev) => [...prev, newScenario]);
       setScenarioInput('');
@@ -178,8 +178,8 @@ export default function DashboardPage() {
     ?.slice(0, 30)
     .map((s: Record<string, unknown>, idx: number) => ({
       step: idx + 1,
-      outcome: typeof s.outcome === 'number' ? s.outcome : Math.random() * 100,
-      baseline: typeof s.outcome === 'number' ? (s.outcome as number) * 0.75 : Math.random() * 75,
+      outcome: typeof s.outcome === 'number' ? s.outcome : 50,
+      baseline: typeof s.outcome === 'number' ? (s.outcome as number) * 0.75 : 37.5,
       time: typeof s.time_to_outcome === 'number' ? s.time_to_outcome : idx * 0.1,
     })) ?? [];
 

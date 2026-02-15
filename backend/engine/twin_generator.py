@@ -5,11 +5,12 @@ The central orchestrator that ties together:
 - System Extraction
 - Quantum Encoding  
 - Algorithm Orchestration
-- Quantum Algorithm Execution (via dt_project)
+- Quantum Algorithm Execution (classical simulation)
 
 This is the main entry point for generating and running digital twins.
 """
 
+import logging
 import sys
 import time
 import uuid
@@ -17,6 +18,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -76,9 +79,9 @@ class SimulationConfig:
 class TwinGenerator:
     """
     Generates and manages quantum digital twins.
-    
+
     Integrates the extraction, encoding, and orchestration pipeline
-    with the actual quantum algorithms from dt_project.
+    with classical simulation of quantum algorithms.
     """
     
     def __init__(self):
@@ -90,52 +93,8 @@ class TwinGenerator:
         self._quantum_modules = self._load_quantum_modules()
     
     def _load_quantum_modules(self) -> Dict[str, Any]:
-        """Load quantum algorithm modules from dt_project."""
-        modules = {}
-        
-        try:
-            from dt_project.quantum import (
-                QAOAOptimizer,
-                QuantumSensingDigitalTwin,
-                TreeTensorNetwork,
-                QuantumDigitalTwinCore,
-            )
-            modules["qaoa"] = QAOAOptimizer
-            modules["sensing"] = QuantumSensingDigitalTwin
-            modules["tensor_network"] = TreeTensorNetwork
-            modules["core"] = QuantumDigitalTwinCore
-        except ImportError as e:
-            print(f"Note: Some quantum modules not available: {e}")
-        
-        try:
-            from dt_project.quantum.ml import (
-                NeuralQuantumDigitalTwin,
-                PennyLaneQuantumML,
-            )
-            modules["neural"] = NeuralQuantumDigitalTwin
-            modules["pennylane"] = PennyLaneQuantumML
-        except ImportError:
-            pass
-        
-        try:
-            from dt_project.healthcare import (
-                PersonalizedMedicineQuantumTwin,
-                DrugDiscoveryQuantumTwin,
-                MedicalImagingQuantumTwin,
-                GenomicAnalysisQuantumTwin,
-                EpidemicModelingQuantumTwin,
-                HospitalOperationsQuantumTwin,
-            )
-            modules["personalized_medicine"] = PersonalizedMedicineQuantumTwin
-            modules["drug_discovery"] = DrugDiscoveryQuantumTwin
-            modules["medical_imaging"] = MedicalImagingQuantumTwin
-            modules["genomic_analysis"] = GenomicAnalysisQuantumTwin
-            modules["epidemic_modeling"] = EpidemicModelingQuantumTwin
-            modules["hospital_operations"] = HospitalOperationsQuantumTwin
-        except ImportError:
-            pass
-        
-        return modules
+        """Quantum algorithm modules (currently using classical simulation)."""
+        return {}
     
     def generate(
         self,
@@ -265,138 +224,8 @@ class TwinGenerator:
         orchestration: OrchestratorResult,
         config: SimulationConfig,
     ) -> Dict[str, Any]:
-        """Run the actual quantum simulation."""
-        results = {
-            "algorithm": orchestration.primary_algorithm.value,
-            "qubits_used": encoding.qubit_allocation.total_qubits,
-            "scenarios": [],
-            "optimal_solution": None,
-            "statistics": {},
-        }
-        
-        # Try to use actual quantum modules if available
-        algorithm = orchestration.primary_algorithm
-        
-        # Try quantum modules, fall back to simulation if they fail
-        try:
-            if algorithm == AlgorithmType.QAOA and "qaoa" in self._quantum_modules:
-                results = self._run_qaoa(system, encoding, config)
-                if "error" in results:
-                    results = self._simulate_results(system, config)
-            elif algorithm == AlgorithmType.TENSOR_NETWORK and "tensor_network" in self._quantum_modules:
-                results = self._run_tensor_network(system, encoding, config)
-                if "error" in results:
-                    results = self._simulate_results(system, config)
-            elif system.domain == "healthcare" and self._has_healthcare_module(system):
-                results = self._run_healthcare_module(system, config)
-                if "error" in results:
-                    results = self._simulate_results(system, config)
-            else:
-                # Use simulated results
-                results = self._simulate_results(system, config)
-        except Exception:
-            # Always fall back to simulation
-            results = self._simulate_results(system, config)
-        
-        return results
-    
-    def _run_qaoa(
-        self,
-        system: ExtractedSystem,
-        encoding: QuantumEncoding,
-        config: SimulationConfig,
-    ) -> Dict[str, Any]:
-        """Run QAOA optimization."""
-        try:
-            from dt_project.quantum import QAOAOptimizer, QAOAConfig
-            
-            # Create simple optimization problem from system
-            n_qubits = min(encoding.qubit_allocation.total_qubits, 10)
-            
-            qaoa_config = QAOAConfig(
-                n_qubits=n_qubits,
-                p_layers=3,
-                use_real_device=False,
-            )
-            
-            optimizer = QAOAOptimizer(qaoa_config)
-            result = optimizer.optimize()
-            
-            return {
-                "algorithm": "qaoa",
-                "qubits_used": n_qubits,
-                "optimal_solution": result.optimal_solution if hasattr(result, 'optimal_solution') else None,
-                "optimal_value": result.optimal_value if hasattr(result, 'optimal_value') else 0.0,
-                "statistics": {
-                    "iterations": result.iterations if hasattr(result, 'iterations') else 0,
-                },
-            }
-        except Exception as e:
-            return {"error": str(e), "algorithm": "qaoa_fallback"}
-    
-    def _run_tensor_network(
-        self,
-        system: ExtractedSystem,
-        encoding: QuantumEncoding,
-        config: SimulationConfig,
-    ) -> Dict[str, Any]:
-        """Run tensor network simulation."""
-        try:
-            from dt_project.quantum import TreeTensorNetwork, TTNConfig
-            
-            n_sites = min(len(system.entities) * 2, 16)
-            
-            ttn_config = TTNConfig(
-                n_sites=n_sites,
-                bond_dimension=32,
-            )
-            
-            ttn = TreeTensorNetwork(ttn_config)
-            
-            return {
-                "algorithm": "tensor_network",
-                "sites": n_sites,
-                "bond_dimension": 32,
-                "statistics": {},
-            }
-        except Exception as e:
-            return {"error": str(e), "algorithm": "tensor_network_fallback"}
-    
-    def _has_healthcare_module(self, system: ExtractedSystem) -> bool:
-        """Check if a healthcare module is available for this system."""
-        if system.domain != "healthcare":
-            return False
-        
-        # Check for specific healthcare modules based on entities
-        for entity in system.entities:
-            if entity.type in ["patient", "treatment"] and "personalized_medicine" in self._quantum_modules:
-                return True
-            if entity.type == "drug" and "drug_discovery" in self._quantum_modules:
-                return True
-            if entity.type == "tumor" and "medical_imaging" in self._quantum_modules:
-                return True
-        
-        return False
-    
-    def _run_healthcare_module(
-        self,
-        system: ExtractedSystem,
-        config: SimulationConfig,
-    ) -> Dict[str, Any]:
-        """Run a healthcare-specific quantum module."""
-        try:
-            # Determine which module to use
-            for entity in system.entities:
-                if entity.type in ["patient", "treatment"] and "personalized_medicine" in self._quantum_modules:
-                    twin_class = self._quantum_modules["personalized_medicine"]
-                    twin = twin_class()
-                    if hasattr(twin, 'optimize_treatment'):
-                        result = twin.optimize_treatment({})
-                        return {"algorithm": "personalized_medicine", "result": result}
-                    
-            return {"algorithm": "healthcare_fallback", "message": "Module not fully implemented"}
-        except Exception as e:
-            return {"error": str(e), "algorithm": "healthcare_fallback"}
+        """Run simulation using classical computation."""
+        return self._simulate_results(system, config)
     
     def _simulate_results(
         self,
