@@ -28,11 +28,13 @@ from backend.api.benchmark import router as benchmark_router
 from backend.api.data import router as data_router
 from backend.auth import auth_router
 from backend.models.database import init_database, engine
+from backend.seed_healthcare import seed_if_empty
 
 logger = logging.getLogger(__name__)
 
-# Initialize database
+# Initialize database and seed demo data if empty
 init_database(engine)
+seed_if_empty(engine)
 
 app = FastAPI(
     title="Quantum Digital Twin Platform",

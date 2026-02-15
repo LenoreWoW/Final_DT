@@ -71,7 +71,7 @@ def active_twin(client):
     so that simulate and query have data to work with.
     """
     # Use conversation to create a detailed twin
-    r = client.post("/api/conversation", json={
+    r = client.post("/api/conversation/", json={
         "message": (
             "I want to model a hospital with 200 beds, 20 ICU beds, "
             "and 500 patients per day. The goal is to optimize patient "
@@ -98,7 +98,7 @@ class TestConversationTwinCreation:
     def test_conversation_creates_twin(self, client):
         """Sending a message with no twin_id creates a new twin."""
         start = time.time()
-        resp = client.post("/api/conversation", json={
+        resp = client.post("/api/conversation/", json={
             "message": (
                 "I have a patient named John, age 65, diagnosed with lung cancer "
                 "stage III. He is currently on cisplatin chemotherapy. I want to "
@@ -127,7 +127,7 @@ class TestConversationTwinCreation:
 
     def test_conversation_with_existing_twin(self, client, active_twin):
         """Sending follow-up messages to an existing twin."""
-        resp = client.post("/api/conversation", json={
+        resp = client.post("/api/conversation/", json={
             "twin_id": active_twin,
             "message": "Add a constraint: maximum 12 hours emergency wait time",
         })
@@ -677,7 +677,7 @@ class TestResponseTimes:
 
     def test_conversation_under_5s(self, client):
         start = time.time()
-        client.post("/api/conversation", json={
+        client.post("/api/conversation/", json={
             "message": "Model a patient with diabetes and hypertension",
         })
         assert time.time() - start < 5.0
@@ -718,3 +718,94 @@ class TestResponseTimes:
             "password": "testpass123",
         })
         assert time.time() - start < 2.0
+
+
+# ===================================================================
+# Scenario 8: Healthcare Showcase / Benchmark Features
+# ===================================================================
+
+class TestHealthcareShowcase:
+    """End-to-end tests for the healthcare showcase / benchmark features."""
+
+    def test_showcase_modules_are_healthcare(self, client):
+        """GET /api/benchmark/modules — all 6 modules are healthcare-related."""
+        resp = client.get("/api/benchmark/modules")
+        assert resp.status_code == 200
+        modules = resp.json()["modules"]
+        assert len(modules) == 6
+
+        expected_ids = set(HEALTHCARE_MODULES)
+        actual_ids = {m["id"] for m in modules}
+        assert actual_ids == expected_ids, (
+            f"Expected modules {expected_ids}, got {actual_ids}"
+        )
+
+        # Each module should have a name and description
+        for m in modules:
+            assert m.get("name"), f"Module {m['id']} missing name"
+            assert m.get("description"), f"Module {m['id']} missing description"
+
+    @pytest.mark.parametrize("module_id", HEALTHCARE_MODULES)
+    def test_showcase_quantum_advantage_for_each_module(self, client, module_id):
+        """Each module shows quantum accuracy > classical and speedup > 1."""
+        resp = client.get(f"/api/benchmark/results/{module_id}")
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert data["module"] == module_id
+
+        # Quantum accuracy should exceed classical accuracy
+        assert data["quantum_accuracy"] > data["classical_accuracy"], (
+            f"{module_id}: quantum_accuracy={data['quantum_accuracy']} "
+            f"should be > classical_accuracy={data['classical_accuracy']}"
+        )
+
+        # Speedup must be greater than 1
+        assert data["speedup"] > 1.0, (
+            f"{module_id}: speedup={data['speedup']} should be > 1.0"
+        )
+
+    def test_showcase_total_quantum_advantage(self, client):
+        """GET /api/benchmark/results — total_quantum_advantage > 1."""
+        resp = client.get("/api/benchmark/results")
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert "total_quantum_advantage" in data
+        assert data["total_quantum_advantage"] > 1.0, (
+            f"total_quantum_advantage={data['total_quantum_advantage']} should be > 1"
+        )
+
+    def test_showcase_live_run_returns_comparison(self, client):
+        """POST /api/benchmark/run/personalized_medicine with both engines returns comparison."""
+        resp = client.post("/api/benchmark/run/personalized_medicine", json={
+            "module": "personalized_medicine",
+            "run_classical": True,
+            "run_quantum": True,
+            "parameters": {},
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+
+        # Both sides must have run
+        assert data["classical"] is not None
+        assert data["quantum"] is not None
+
+        # Comparison must be present with key metrics
+        comparison = data["comparison"]
+        assert comparison is not None, "comparison should be present when both engines run"
+        assert "speedup" in comparison, "comparison missing 'speedup'"
+        assert "accuracy_improvement" in comparison, "comparison missing 'accuracy_improvement'"
+
+    def test_showcase_methodology_mentions_aer(self, client):
+        """GET /api/benchmark/methodology — Aer simulator is mentioned."""
+        resp = client.get("/api/benchmark/methodology")
+        assert resp.status_code == 200
+        data = resp.json()
+
+        # Flatten the methodology response to a single string for searching
+        import json as json_lib
+        methodology_text = json_lib.dumps(data).lower()
+        assert "aer" in methodology_text, (
+            "Benchmark methodology should mention the Qiskit Aer simulator"
+        )
