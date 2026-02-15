@@ -2,12 +2,15 @@
 Anthropic (Claude) AI Provider -- requires ANTHROPIC_API_KEY.
 
 This is a placeholder for future Claude API integration. It validates
-that the API key is set at construction time and raises clear errors
-directing users to the free local provider if the key is missing.
+that the API key is set at construction time and returns placeholder
+responses directing users to the free local provider.
 """
 
 import os
+import logging
 from .base import AIProvider
+
+logger = logging.getLogger(__name__)
 
 
 class AnthropicProvider(AIProvider):
@@ -30,14 +33,26 @@ class AnthropicProvider(AIProvider):
 
     async def chat(self, message: str, conversation_history: list) -> dict:
         """Send a chat message to Claude API. Not yet implemented."""
-        raise NotImplementedError(
-            "Anthropic chat() is not yet implemented. "
-            "Use AI_PROVIDER=local for the working local provider."
-        )
+        logger.warning("Anthropic chat() called but not yet implemented; returning placeholder")
+        return {
+            "message": (
+                "The Anthropic provider is not yet fully implemented. "
+                "Please set AI_PROVIDER=local in your .env to use the "
+                "working local NLP provider."
+            ),
+            "confidence": 0.0,
+            "provider": "anthropic",
+            "status": "not_implemented",
+        }
 
     async def extract_system(self, conversation: list) -> dict:
         """Extract system definition via Claude API. Not yet implemented."""
-        raise NotImplementedError(
-            "Anthropic extract_system() is not yet implemented. "
-            "Use AI_PROVIDER=local for the working local provider."
-        )
+        logger.warning("Anthropic extract_system() called but not yet implemented; returning placeholder")
+        return {
+            "entities": [],
+            "relationships": [],
+            "domain": "unknown",
+            "confidence": 0.0,
+            "provider": "anthropic",
+            "status": "not_implemented",
+        }

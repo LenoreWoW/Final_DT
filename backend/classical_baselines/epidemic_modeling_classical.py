@@ -155,7 +155,7 @@ class EpidemicModelingClassical:
         age_factor = max(0.5, min(2.0, age_factor))
 
         # Transmission probability
-        transmission_prob = effective_rate * age_factor
+        transmission_prob = min(1.0, effective_rate * age_factor)
 
         return np.random.random() < transmission_prob
 

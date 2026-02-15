@@ -242,6 +242,10 @@ class HospitalOperationsClassical:
 
     def _swap_patients(self, patient1: Patient, patient2: Patient):
         """Swap two patients' time slots"""
+        # Save old times for schedule update
+        old_start1, old_end1 = patient1.start_time, patient1.end_time
+        old_start2, old_end2 = patient2.start_time, patient2.end_time
+
         # Swap start times
         patient1.start_time, patient2.start_time = patient2.start_time, patient1.start_time
 
@@ -252,6 +256,14 @@ class HospitalOperationsClassical:
         # Update wait times
         patient1.wait_time = patient1.start_time - patient1.arrival_time
         patient2.wait_time = patient2.start_time - patient2.arrival_time
+
+        # Update resource schedules to reflect the swap
+        for resource in self.resources.values():
+            for idx, (start, end, pid) in enumerate(resource.schedule):
+                if pid == patient1.id and start == old_start1 and end == old_end1:
+                    resource.schedule[idx] = (patient1.start_time, patient1.end_time, patient1.id)
+                elif pid == patient2.id and start == old_start2 and end == old_end2:
+                    resource.schedule[idx] = (patient2.start_time, patient2.end_time, patient2.id)
 
     def _calculate_metrics(self) -> Dict:
         """Calculate performance metrics"""

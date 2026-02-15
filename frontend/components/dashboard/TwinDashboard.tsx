@@ -32,10 +32,10 @@ export function TwinDashboard({ twinId, initialTwin }: TwinDashboardProps) {
   };
 
   // Prepare chart data from simulation results
-  const chartData = simulationResult?.results?.scenarios?.map((s: any) => ({
+  const chartData = simulationResult?.results?.scenarios?.map((s: Record<string, unknown>) => ({
     name: `Scenario ${s.id}`,
-    outcome: s.outcome,
-    time: s.time_to_outcome,
+    outcome: typeof s.outcome === 'number' ? s.outcome : 0,
+    time: typeof s.time_to_outcome === 'number' ? s.time_to_outcome : 0,
   })).slice(0, 20) || [];
 
   return (

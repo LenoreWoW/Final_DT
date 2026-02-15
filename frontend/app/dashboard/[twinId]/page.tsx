@@ -193,10 +193,7 @@ export default function DashboardPage() {
         {
           name: 'Classical',
           execution_time: simulationResult.quantum_advantage.classical_equivalent_seconds,
-          scenarios_tested: Math.min(
-            simulationResult.results?.statistics?.scenarios_run ?? scenariosCount,
-            50
-          ),
+          scenarios_tested: simulationResult.results?.statistics?.scenarios_run ?? scenariosCount,
         },
       ]
     : [];

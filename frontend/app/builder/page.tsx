@@ -7,7 +7,7 @@ import { TwinDashboard } from '@/components/dashboard/TwinDashboard';
 import FileUpload from '@/components/data/FileUpload';
 import ExportResults from '@/components/export/ExportResults';
 import CircuitVisualization from '@/components/quantum/CircuitVisualization';
-import { twinService } from '@/lib/api';
+import { twinService, Twin } from '@/lib/api';
 import { createTwinSocket, WSMessage } from '@/lib/websocket';
 import { Sparkles, Database, Download, Cpu, Check, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -28,15 +28,15 @@ export default function BuilderPage() {
   const router = useRouter();
   const [activeTwinId, setActiveTwinId] = useState<string | null>(null);
   const [twinStatus, setTwinStatus] = useState<string>('draft');
-  const [twinData, setTwinData] = useState<any>(null);
-  const [uploadedData, setUploadedData] = useState<any>(null);
+  const [twinData, setTwinData] = useState<Twin | null>(null);
+  const [uploadedData, setUploadedData] = useState<{ data: unknown; metadata: { rows: number; columns: number } } | null>(null);
 
   // Generation progress
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState(0);
   const [generationProgress, setGenerationProgress] = useState(0);
 
-  const handleFileProcessed = (data: any, metadata: any) => {
+  const handleFileProcessed = (data: unknown, metadata: { rows: number; columns: number }) => {
     setUploadedData({ data, metadata });
   };
 
@@ -46,14 +46,15 @@ export default function BuilderPage() {
     setGenerationStep(0);
     setGenerationProgress(0);
 
-    // Simulate generation steps (WebSocket would provide real progress)
+    // Fallback progress timer (cancelled when WebSocket provides real updates)
+    let wsConnected = false;
     const stepInterval = setInterval(() => {
+      if (wsConnected) return;
       setGenerationStep((prev) => {
         const next = prev + 1;
         if (next >= GENERATION_STEPS.length) {
           clearInterval(stepInterval);
           setIsGenerating(false);
-          // Fetch twin data when complete
           twinService.getTwin(twinId).then(setTwinData);
           return prev;
         }
@@ -62,9 +63,11 @@ export default function BuilderPage() {
       });
     }, 800);
 
-    // Also try connecting WebSocket for real updates
+    // Connect WebSocket for real-time updates
     const { cleanup } = createTwinSocket(twinId, (msg: WSMessage) => {
       if (msg.type === 'generation_progress' && typeof msg.progress === 'number') {
+        wsConnected = true;
+        clearInterval(stepInterval);
         setGenerationProgress(msg.progress * 100);
         const stepIdx = GENERATION_STEPS.findIndex((s) => s.key === msg.step);
         if (stepIdx >= 0) setGenerationStep(stepIdx);

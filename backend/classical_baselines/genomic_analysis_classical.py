@@ -51,12 +51,11 @@ class PCA:
         cov_matrix = np.cov(X_centered.T)
 
         # Compute eigenvalues and eigenvectors
-        eigenvalues, eigenvectors = np.linalg.eig(cov_matrix)
+        eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
 
-        # Sort by eigenvalues in descending order
-        idx = eigenvalues.argsort()[::-1]
-        eigenvalues = eigenvalues[idx]
-        eigenvectors = eigenvectors[:, idx]
+        # eigh returns ascending order, reverse to descending
+        eigenvalues = eigenvalues[::-1]
+        eigenvectors = eigenvectors[:, ::-1]
 
         # Keep top n_components
         self.components = eigenvectors[:, :self.n_components]
@@ -222,6 +221,7 @@ class RandomForest:
             y: Training labels (n_samples,)
         """
         self.trees = []
+        self.n_classes = len(np.unique(y))
 
         for _ in range(self.n_estimators):
             # Bootstrap sample
@@ -277,7 +277,7 @@ class RandomForest:
             Class probabilities (n_samples, n_classes)
         """
         n_samples = X.shape[0]
-        n_classes = 2  # Binary classification
+        n_classes = getattr(self, 'n_classes', 2)
 
         probabilities = np.zeros((n_samples, n_classes))
 
@@ -316,7 +316,8 @@ class GenomicAnalysisClassical:
         self.rf = RandomForest(
             n_estimators=n_estimators,
             max_depth=10,
-            min_samples_split=2
+            min_samples_split=2,
+            random_state=42
         )
 
     def analyze_gene_expression(self,

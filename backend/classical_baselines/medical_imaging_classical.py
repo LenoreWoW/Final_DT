@@ -252,18 +252,23 @@ class MedicalImagingClassical:
         self._simulate_training()
 
     def _simulate_training(self):
-        """Simulate training by adjusting weights to be more realistic"""
-        # Adjust weights to produce more realistic classifications
-        # This simulates the effect of training without actually training
+        """Initialize weights using He initialization for better classification"""
+        # He initialization for ReLU networks: std = sqrt(2/fan_in)
+        fan_in_1 = self.cnn.conv1.filters.shape[1] * self.cnn.conv1.filters.shape[2] * self.cnn.conv1.filters.shape[3]
+        self.cnn.conv1.filters = np.random.randn(*self.cnn.conv1.filters.shape) * np.sqrt(2.0 / fan_in_1)
 
-        # Scale up conv filters for better feature extraction
-        self.cnn.conv1.filters *= 2.0
-        self.cnn.conv2.filters *= 1.5
-        self.cnn.conv3.filters *= 1.2
+        fan_in_2 = self.cnn.conv2.filters.shape[1] * self.cnn.conv2.filters.shape[2] * self.cnn.conv2.filters.shape[3]
+        self.cnn.conv2.filters = np.random.randn(*self.cnn.conv2.filters.shape) * np.sqrt(2.0 / fan_in_2)
 
-        # Adjust FC weights for better separation
-        self.cnn.fc1.weights *= 1.5
-        self.cnn.fc2.weights *= 2.0
+        fan_in_3 = self.cnn.conv3.filters.shape[1] * self.cnn.conv3.filters.shape[2] * self.cnn.conv3.filters.shape[3]
+        self.cnn.conv3.filters = np.random.randn(*self.cnn.conv3.filters.shape) * np.sqrt(2.0 / fan_in_3)
+
+        # Xavier initialization for FC layers
+        fan_in_fc1 = self.cnn.fc1.weights.shape[1]
+        self.cnn.fc1.weights = np.random.randn(*self.cnn.fc1.weights.shape) * np.sqrt(2.0 / fan_in_fc1)
+
+        fan_in_fc2 = self.cnn.fc2.weights.shape[1]
+        self.cnn.fc2.weights = np.random.randn(*self.cnn.fc2.weights.shape) * np.sqrt(2.0 / fan_in_fc2)
 
     def preprocess_image(self, image: np.ndarray) -> np.ndarray:
         """

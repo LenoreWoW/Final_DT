@@ -26,6 +26,7 @@ class DrugCandidate:
     binding_affinity: float = 0.0
     toxicity_score: float = 0.0
     synthesis_complexity: float = 0.0
+    composite_score: float = 0.0
 
 
 class ClassicalMolecularDynamics:
@@ -80,7 +81,10 @@ class ClassicalMolecularDynamics:
 
         # Bonded interactions
         for i, j in molecule.bonds:
-            r = np.linalg.norm(positions[i] - positions[j])
+            diff = positions[i] - positions[j]
+            if np.any(np.isnan(diff)):
+                continue
+            r = np.linalg.norm(diff)
             r0 = 1.5  # Equilibrium bond length (Angstroms)
             energy += self.bond_potential(r, r0)
 
@@ -91,8 +95,12 @@ class ClassicalMolecularDynamics:
         for i in range(n_atoms):
             for j in range(i + 1, n_atoms):
                 if (i, j) not in bonded_pairs:
-                    r = np.linalg.norm(positions[i] - positions[j])
-                    energy += self.lennard_jones_potential(r)
+                    diff = positions[i] - positions[j]
+                    if np.any(np.isnan(diff)):
+                        continue
+                    r = np.linalg.norm(diff)
+                    if r > 0.1:
+                        energy += self.lennard_jones_potential(r)
 
         return energy
 
@@ -117,7 +125,7 @@ class ClassicalMolecularDynamics:
             for i, j in molecule.bonds:
                 vec = positions[j] - positions[i]
                 r = np.linalg.norm(vec)
-                if r > 0:
+                if r > 1e-6:
                     r0 = 1.5
                     force_mag = -self.k_bond * (r - r0)
                     force = force_mag * vec / r
@@ -133,7 +141,7 @@ class ClassicalMolecularDynamics:
                     if (i, j) not in bonded_pairs:
                         vec = positions[j] - positions[i]
                         r = np.linalg.norm(vec)
-                        if r > 0.1:
+                        if r > 1.0:  # Skip unrealistically close pairs
                             # LJ force derivative
                             sr6 = (self.sigma / r) ** 6
                             force_mag = 24 * self.epsilon * (2 * sr6 ** 2 - sr6) / r
@@ -141,7 +149,8 @@ class ClassicalMolecularDynamics:
                             forces[i] -= force
                             forces[j] += force
 
-            # Update positions
+            # Clamp forces to prevent numerical overflow, then update positions
+            np.clip(forces, -1e6, 1e6, out=forces)
             positions += step_size * forces
 
             # Check convergence
@@ -378,7 +387,7 @@ class DrugDiscoveryClassical:
             ],
             'library_size': library_size,
             'screening_time': elapsed_time,
-            'throughput': library_size / elapsed_time,
+            'throughput': library_size / elapsed_time if elapsed_time > 0 else 0,
             'best_binding_affinity': top_candidates[0].binding_affinity,
             'average_binding_affinity': np.mean([c.binding_affinity for c in candidates]),
             'method': 'Classical Molecular Dynamics'
