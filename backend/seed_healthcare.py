@@ -16,7 +16,7 @@ Usage:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -37,7 +37,7 @@ CONVERSATION_ID = "healthcare-demo-conv-0001"
 SIMULATION_ID = "healthcare-demo-sim-0001"
 
 # Timestamps for realistic history
-_NOW = datetime.utcnow()
+_NOW = datetime.now(timezone.utc)
 _CREATED = _NOW - timedelta(hours=2)
 _UPDATED = _NOW - timedelta(minutes=10)
 

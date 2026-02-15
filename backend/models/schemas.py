@@ -2,10 +2,10 @@
 Pydantic schemas for API request/response validation.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # =============================================================================
@@ -136,8 +136,7 @@ class Twin(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =============================================================================
@@ -148,7 +147,7 @@ class Message(BaseModel):
     """A single message in a conversation."""
     role: str  # "user" or "assistant"
     content: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -240,5 +239,5 @@ class BenchmarkResult(BaseModel):
     improvement: Optional[float] = None
     details: Dict[str, Any] = Field(default_factory=dict)
     qasm_circuit: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
