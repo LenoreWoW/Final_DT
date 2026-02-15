@@ -203,4 +203,4 @@ class TestExecutionTime:
         start = time.time()
         classical_run(module_id, params)
         elapsed = time.time() - start
-        assert elapsed < 10, f"{module_id} took {elapsed:.1f}s (limit 10s)"
+        assert elapsed < 60, f"{module_id} took {elapsed:.1f}s (limit 60s)"

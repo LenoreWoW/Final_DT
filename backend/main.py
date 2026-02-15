@@ -10,6 +10,7 @@ import time
 import uuid
 import logging
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from datetime import datetime, date, timezone
 from pathlib import Path
 from typing import Dict, Optional, Set
@@ -32,11 +33,22 @@ from backend.seed_healthcare import seed_if_empty
 
 logger = logging.getLogger(__name__)
 
-# Initialize database and seed demo data if empty
-init_database(engine)
-seed_if_empty(engine)
+
+# ---------------------------------------------------------------------------
+# Lifespan handler — initialise the database on startup instead of at import
+# ---------------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application startup/shutdown lifecycle."""
+    # Startup: initialise database tables and seed demo data
+    init_database(engine)
+    seed_if_empty(engine)
+    yield
+    # Shutdown: nothing to clean up for now
 
 app = FastAPI(
+    lifespan=lifespan,
     title="Quantum Digital Twin Platform",
     description="""
     ## Universal Reality Simulator - Build a second world
@@ -77,39 +89,49 @@ app = FastAPI(
 # =============================================================================
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Simple per-user rate limiting and usage tracking middleware."""
+    """Per-user (and per-IP fallback) rate limiting and usage tracking middleware."""
 
-    def __init__(self, app, default_limit: int = 50):
+    def __init__(self, app, default_limit: int = 50, anonymous_limit: int = 200):
         super().__init__(app)
         self.default_limit = default_limit
-        # In-memory counter: {user_id: {date_str: count}}
+        self.anonymous_limit = anonymous_limit
+        # In-memory counter: {identifier: {date_str: count}}
         self._counters: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
 
-        # Extract user from JWT if present (lightweight check)
+        # Extract user from JWT with full signature verification
         user_id = self._extract_user_id(request)
         today = date.today().isoformat()
 
-        # Rate limit check (only for authenticated users on /api/ paths)
-        if user_id and request.url.path.startswith("/api/"):
-            count = self._counters[user_id][today]
-            limit = self._get_limit(user_id)
+        # Rate limit check for ALL requests on /api/ paths
+        if request.url.path.startswith("/api/"):
+            if user_id:
+                identifier = f"user:{user_id}"
+                limit = self._get_limit(user_id)
+            else:
+                # IP-based fallback for unauthenticated requests
+                client_ip = request.client.host if request.client else "unknown"
+                identifier = f"ip:{client_ip}"
+                limit = self.anonymous_limit
+
+            count = self._counters[identifier][today]
 
             if count >= limit:
                 return Response(
                     content=json.dumps({
-                        "detail": f"Rate limit exceeded ({limit} requests/day). Upgrade your tier for higher limits."
+                        "detail": f"Rate limit exceeded ({limit} requests/day). "
+                                  "Please authenticate or upgrade your tier for higher limits."
                     }),
                     status_code=429,
                     media_type="application/json",
                 )
-            self._counters[user_id][today] += 1
+            self._counters[identifier][today] += 1
 
         response = await call_next(request)
 
-        # Usage tracking (async, non-blocking)
+        # Usage tracking (async, non-blocking) — only for authenticated users
         if user_id and request.url.path.startswith("/api/"):
             response_time = (time.time() - start_time) * 1000
             self._track_usage(user_id, request.url.path, request.method, response.status_code, response_time)
@@ -117,19 +139,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return response
 
     def _extract_user_id(self, request: Request) -> Optional[str]:
-        """Extract user_id from Authorization header without full JWT validation."""
+        """Extract user_id from Authorization header with full JWT signature verification."""
         auth = request.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
             return None
         token = auth[7:]
         try:
-            import base64
-            # Decode JWT payload (middle part) without verification for rate limiting
-            payload = token.split(".")[1]
-            padding = 4 - len(payload) % 4
-            payload += "=" * padding
-            data = json.loads(base64.urlsafe_b64decode(payload))
-            return data.get("sub") or data.get("user_id")
+            from backend.auth.dependencies import decode_token_safe
+            return decode_token_safe(token)
         except Exception:
             return None
 
@@ -139,6 +156,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     def _track_usage(self, user_id: str, endpoint: str, method: str, status_code: int, response_time_ms: float):
         """Log usage to database (fire-and-forget)."""
+        db = None
         try:
             from backend.models.database import SessionLocal, UsageTrackingModel
             db = SessionLocal()
@@ -152,9 +170,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
             db.add(record)
             db.commit()
-            db.close()
         except Exception:
-            pass  # Non-critical — don't let tracking errors break requests
+            logger.debug("Usage tracking failed (non-critical)", exc_info=True)
+        finally:
+            if db is not None:
+                db.close()
 
 
 # =============================================================================
@@ -162,7 +182,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 # =============================================================================
 
 # Add middleware
-app.add_middleware(RateLimitMiddleware, default_limit=200)
+app.add_middleware(RateLimitMiddleware, default_limit=200, anonymous_limit=1000)
 
 # CORS configuration for frontend
 app.add_middleware(

@@ -4,6 +4,7 @@ Conversation API Router - Natural language interface for twin creation and query
 Uses the SystemExtractor from the engine layer for all extraction work.
 """
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -24,6 +25,9 @@ from backend.models.schemas import (
     Message,
 )
 from backend.engine.extraction import SystemExtractor, ExtractionResult
+from backend.auth.dependencies import get_current_user_optional
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/conversation", tags=["conversation"])
 
@@ -38,7 +42,8 @@ _extractor = SystemExtractor()
 @router.post("/", response_model=ConversationResponse)
 async def send_message(
     request: ConversationRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_optional),
 ):
     """
     Send a message in the conversation.
@@ -69,7 +74,7 @@ async def send_message(
         db.commit()
         db.refresh(db_twin)
 
-    # Get or create conversation
+    # Get or create conversation — use get-or-create pattern to prevent race conditions
     db_conversation = db.query(ConversationModel).filter(
         ConversationModel.twin_id == db_twin.id
     ).first()
@@ -83,6 +88,20 @@ async def send_message(
             updated_at=datetime.now(timezone.utc),
         )
         db.add(db_conversation)
+        try:
+            db.flush()
+        except Exception:
+            # Another request created the conversation concurrently — reload
+            db.rollback()
+            db_conversation = db.query(ConversationModel).filter(
+                ConversationModel.twin_id == db_twin.id
+            ).first()
+            if not db_conversation:
+                logger.error("Failed to create or find conversation for twin %s", db_twin.id)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to initialise conversation",
+                )
 
     # Add user message to conversation
     user_message = {
@@ -98,7 +117,11 @@ async def send_message(
     if db_twin.extracted_system:
         try:
             existing_system = ExtractedSystem(**db_twin.extracted_system)
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+                "Could not parse existing extracted_system for twin %s: %s",
+                db_twin.id, exc,
+            )
             existing_system = None
 
     extraction_result: ExtractionResult = _extractor.extract(
@@ -158,7 +181,8 @@ async def send_message(
 @router.get("/{twin_id}/history", response_model=List[Message])
 async def get_conversation_history(
     twin_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_optional),
 ):
     """Get conversation history for a twin."""
     db_conversation = db.query(ConversationModel).filter(
@@ -212,7 +236,7 @@ def _generate_clarifying_response(
         extracted_summary += f"\nDomain: {system.domain}"
 
     response = f"I'm building your quantum digital twin.{extracted_summary}\n\nTo continue, I need to know:\n"
-    response += "\n".join(f"• {q}" for q in questions)
+    response += "\n".join(f"\u2022 {q}" for q in questions)
 
     return response, questions
 
@@ -233,10 +257,10 @@ I'm now generating the quantum circuits and preparing the simulation environment
 This typically takes a few seconds.
 
 Once ready, you'll be able to:
-• Run simulations across thousands of scenarios simultaneously
-• Ask "what if" questions
-• Optimize for your goals
-• Explore possible futures
+\u2022 Run simulations across thousands of scenarios simultaneously
+\u2022 Ask "what if" questions
+\u2022 Optimize for your goals
+\u2022 Explore possible futures
 
 Generating your twin now..."""
 
@@ -253,4 +277,3 @@ def _generate_suggestions(system: ExtractedSystem) -> List[str]:
         suggestions.append("Try: 'What's my optimal pacing strategy?'")
 
     return suggestions
-

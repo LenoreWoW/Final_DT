@@ -343,7 +343,7 @@ def run_quantum_sensing(params: dict) -> QuantumResult:
     num_shots = params.get("num_shots", 1000)
 
     logger.debug("Using classical simulation for %s", "quantum_sensing")
-    classical_precision = 1.0 / np.sqrt(num_shots)
+    classical_precision = 1.0 / np.sqrt(max(num_shots, 1))
     measured = true_parameter + np.random.normal(0, classical_precision)
     return QuantumResult(
         success=True,
@@ -490,6 +490,7 @@ def run_pennylane_ml(params: dict) -> QuantumResult:
 
     logger.debug("Using classical simulation for %s", "pennylane_ml")
     # Classical fallback: simple logistic-style training curve
+    num_epochs = max(num_epochs, 1)
     losses = [float(np.exp(-3 * e / num_epochs) + 0.1) for e in range(num_epochs)]
     accuracy = 0.70 + np.random.rand() * 0.25
     return QuantumResult(

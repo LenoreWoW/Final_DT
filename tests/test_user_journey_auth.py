@@ -60,7 +60,7 @@ def journey_client(journey_db_session):
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_db, None)
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +70,12 @@ def journey_client(journey_db_session):
 class TestAuthenticationJourney:
     """
     Sequential user-journey tests for authentication and security.
+
+    ORDERING DEPENDENCY: Tests are numbered (test_01_, test_02_, ...) and MUST
+    run in lexicographic order. Earlier tests store state on ``self.__class__``
+    (e.g. _user_id, _token) that later tests depend on. pytest collects tests
+    in definition order by default, and the numbering ensures correct ordering
+    even if a plugin sorts alphabetically.
 
     State is shared across methods via ``self.__class__`` attributes so that
     the register -> login -> profile chain works naturally.

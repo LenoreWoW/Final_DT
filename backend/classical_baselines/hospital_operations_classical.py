@@ -185,6 +185,11 @@ class HospitalOperationsClassical:
         """
         start_time = time.time()
 
+        # Reset scheduling state so greedy_schedule starts fresh
+        self.scheduled_patients = []
+        for resource in self.resources.values():
+            resource.schedule = []
+
         # First do greedy schedule
         self.greedy_schedule()
 
@@ -210,7 +215,9 @@ class HospitalOperationsClassical:
                         new_wait_j = patient_i.start_time - patient_j.arrival_time
 
                         # Only swap if it reduces total wait time
-                        if new_wait_i + new_wait_j < current_wait:
+                        # and neither wait time becomes negative
+                        if (new_wait_i >= 0 and new_wait_j >= 0 and
+                                new_wait_i + new_wait_j < current_wait):
                             self._swap_patients(patient_i, patient_j)
                             improved = True
 
@@ -332,23 +339,22 @@ def generate_patient_stream(n_patients: int = 100,
     Returns:
         List of patients
     """
-    if seed is not None:
-        np.random.seed(seed)
+    rng = np.random.RandomState(seed)
 
     patients = []
 
     for i in range(n_patients):
         # Random arrival time
-        arrival_time = np.random.uniform(0, time_window)
+        arrival_time = rng.uniform(0, time_window)
 
         # Priority distribution (weighted towards lower priority)
         priority_values = [1, 2, 3, 4]
         priority_probs = [0.4, 0.3, 0.2, 0.1]
-        priority_value = np.random.choice(priority_values, p=priority_probs)
+        priority_value = rng.choice(priority_values, p=priority_probs)
         priority = Priority(priority_value)
 
         # Treatment duration (higher priority = longer treatment)
-        base_duration = np.random.uniform(0.5, 3.0)
+        base_duration = rng.uniform(0.5, 3.0)
         duration = base_duration * priority_value
 
         # Resource requirements

@@ -49,7 +49,8 @@ class EpidemicModelingClassical:
                  transmission_rate: float = 0.3,
                  recovery_days: int = 14,
                  mortality_rate: float = 0.02,
-                 contact_radius: float = 5.0):
+                 contact_radius: float = 5.0,
+                 seed: Optional[int] = None):
         """
         Initialize epidemic model
 
@@ -61,6 +62,7 @@ class EpidemicModelingClassical:
             recovery_days: Days to recovery
             mortality_rate: Probability of death
             contact_radius: Distance for potential contact
+            seed: Random seed for reproducibility
         """
         self.population_size = population_size
         self.initial_infected = initial_infected
@@ -70,8 +72,13 @@ class EpidemicModelingClassical:
         self.mortality_rate = mortality_rate
         self.contact_radius = contact_radius
 
+        self.rng = np.random.RandomState(seed)
+
         self.agents: List[Agent] = []
         self.current_day = 0
+
+        # Spatial grid for efficient neighbor lookups
+        self._spatial_grid: Dict[Tuple[int, int], List[Agent]] = {}
 
         # Statistics tracking
         self.history = {
@@ -91,12 +98,12 @@ class EpidemicModelingClassical:
         for i in range(self.population_size):
             # Random position in grid
             position = np.array([
-                np.random.uniform(0, self.grid_size[0]),
-                np.random.uniform(0, self.grid_size[1])
+                self.rng.uniform(0, self.grid_size[0]),
+                self.rng.uniform(0, self.grid_size[1])
             ])
 
             # Age distribution (simplified)
-            age = int(np.random.exponential(35)) + 18
+            age = int(self.rng.exponential(35)) + 18
             age = min(age, 90)
 
             # Initial state
@@ -117,18 +124,35 @@ class EpidemicModelingClassical:
 
             self.agents.append(agent)
 
+    def _build_spatial_grid(self):
+        """Build a spatial grid index for O(1) neighbor lookups per cell"""
+        self._spatial_grid = {}
+        cell_size = self.contact_radius
+        for agent in self.agents:
+            cx = int(agent.position[0] / cell_size)
+            cy = int(agent.position[1] / cell_size)
+            key = (cx, cy)
+            if key not in self._spatial_grid:
+                self._spatial_grid[key] = []
+            self._spatial_grid[key].append(agent)
+
     def _get_nearby_agents(self, agent: Agent) -> List[Agent]:
-        """Find agents within contact radius"""
+        """Find agents within contact radius using spatial grid"""
         nearby = []
+        cell_size = self.contact_radius
+        cx = int(agent.position[0] / cell_size)
+        cy = int(agent.position[1] / cell_size)
 
-        for other in self.agents:
-            if other.id == agent.id:
-                continue
-
-            distance = np.linalg.norm(agent.position - other.position)
-
-            if distance <= self.contact_radius:
-                nearby.append(other)
+        # Check the cell and all 8 neighboring cells
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                key = (cx + dx, cy + dy)
+                for other in self._spatial_grid.get(key, []):
+                    if other.id == agent.id:
+                        continue
+                    distance = np.linalg.norm(agent.position - other.position)
+                    if distance <= self.contact_radius:
+                        nearby.append(other)
 
         return nearby
 
@@ -157,21 +181,21 @@ class EpidemicModelingClassical:
         # Transmission probability
         transmission_prob = min(1.0, effective_rate * age_factor)
 
-        return np.random.random() < transmission_prob
+        return self.rng.random() < transmission_prob
 
     def _move_agents(self):
         """Move agents randomly (simplified mobility)"""
         for agent in self.agents:
             if agent.state != AgentState.DEAD:
                 # Random walk
-                direction = np.random.randn(2)
+                direction = self.rng.randn(2)
                 direction = direction / (np.linalg.norm(direction) + 1e-8)
 
                 # Movement distance (infected move less)
                 if agent.state == AgentState.INFECTED:
-                    distance = np.random.uniform(0, 2)
+                    distance = self.rng.uniform(0, 2)
                 else:
-                    distance = np.random.uniform(0, 5)
+                    distance = self.rng.uniform(0, 5)
 
                 # Update position
                 new_position = agent.position + direction * distance
@@ -220,7 +244,7 @@ class EpidemicModelingClassical:
 
                 death_prob = self.mortality_rate * age_mortality_factor
 
-                if np.random.random() < death_prob:
+                if self.rng.random() < death_prob:
                     agent.state = AgentState.DEAD
                 else:
                     agent.state = AgentState.RECOVERED
@@ -282,6 +306,7 @@ class EpidemicModelingClassical:
 
             # Simulation steps
             self._move_agents()
+            self._build_spatial_grid()
             self._update_infections(intervention_factor)
             self._update_recoveries()
             self._record_statistics()
@@ -331,9 +356,15 @@ class EpidemicModelingClassical:
         Returns:
             Comparison results
         """
+        # Save RNG state so both simulations start from the same point
+        rng_state = self.rng.get_state()
+
         # Baseline (no intervention)
         self._initialize_population()
         baseline = self.simulate(days=days, interventions=[])
+
+        # Restore RNG state for identical initial population
+        self.rng.set_state(rng_state)
 
         # With intervention
         self._initialize_population()
@@ -371,7 +402,8 @@ def run_epidemic_modeling_classical(population_size: int = 10000,
         transmission_rate=0.3,
         recovery_days=14,
         mortality_rate=0.02,
-        contact_radius=5.0
+        contact_radius=5.0,
+        seed=42
     )
 
     # Test intervention: social distancing

@@ -52,7 +52,7 @@ def journey_client():
     with TestClient(app) as c:
         yield c
     session.close()
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_db, None)
 
 
 # ===========================================================================
@@ -65,6 +65,10 @@ class TestMilitaryTwinJourney:
     Military logistics commander optimizing supply routes.
 
     Journey: create -> converse -> activate -> simulate -> query -> QASM
+
+    ORDERING DEPENDENCY: Tests are numbered (test_01_ through test_06_) and
+    MUST run in lexicographic order. Each step stores state on
+    ``self.__class__`` (twin_id, simulation_id) that subsequent steps depend on.
     """
 
     def test_01_create_twin(self, journey_client):
@@ -198,6 +202,10 @@ class TestSportsTwinJourney:
     Coach optimizing marathon runner's training.
 
     Journey: create -> converse -> activate -> simulate -> query -> QASM
+
+    ORDERING DEPENDENCY: Tests are numbered (test_01_ through test_06_) and
+    MUST run in lexicographic order. Each step stores state on
+    ``self.__class__`` (twin_id, simulation_id) that subsequent steps depend on.
     """
 
     def test_01_create_twin(self, journey_client):
@@ -328,6 +336,10 @@ class TestEnvironmentTwinJourney:
     Environmental scientist modeling flood risk.
 
     Journey: create -> converse -> activate -> simulate -> query -> QASM
+
+    ORDERING DEPENDENCY: Tests are numbered (test_01_ through test_06_) and
+    MUST run in lexicographic order. Each step stores state on
+    ``self.__class__`` (twin_id, simulation_id) that subsequent steps depend on.
     """
 
     def test_01_create_twin(self, journey_client):

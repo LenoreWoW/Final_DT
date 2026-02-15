@@ -52,7 +52,7 @@ def client(journey_db):
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_db, None)
 
 
 # ===========================================================================
@@ -64,8 +64,12 @@ class TestHealthcareResearcherJourney:
     """
     Sequential user journey for a healthcare researcher.
 
-    State is shared between test methods via class-level attributes
-    (self.__class__.twin_id, etc.) so each step builds on the previous one.
+    ORDERING DEPENDENCY: Tests are numbered (test_step01_ through test_step11_)
+    and MUST run in lexicographic order. Each step stores state on
+    ``self.__class__`` (twin_id, simulation_id, first_entity_count) that
+    subsequent steps depend on. pytest collects tests in definition order by
+    default, and the numbering ensures correct ordering even if a plugin
+    sorts alphabetically.
     """
 
     # -- Step 1: Create twin ------------------------------------------------

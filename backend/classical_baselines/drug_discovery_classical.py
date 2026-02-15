@@ -59,7 +59,7 @@ class ClassicalMolecularDynamics:
         """
         Calculate Lennard-Jones potential
 
-        V(r) = 4ε[(σ/r)^12 - (σ/r)^6]
+        V(r) = 4*eps*[(sig/r)^12 - (sig/r)^6]
         """
         if r < 0.1:  # Avoid division by zero
             r = 0.1
@@ -122,6 +122,10 @@ class ClassicalMolecularDynamics:
             forces = np.zeros_like(positions)
 
             # Bonded forces
+            # F = -dV/dr * r_hat = -k_bond*(r-r0) * (vec/r)
+            # vec = pos[j] - pos[i] points from i toward j
+            # When r > r0: force_mag < 0, force points away from j,
+            # so forces[i] += force pushes i toward j (correct restoring force)
             for i, j in molecule.bonds:
                 vec = positions[j] - positions[i]
                 r = np.linalg.norm(vec)
@@ -129,8 +133,8 @@ class ClassicalMolecularDynamics:
                     r0 = 1.5
                     force_mag = -self.k_bond * (r - r0)
                     force = force_mag * vec / r
-                    forces[i] -= force
-                    forces[j] += force
+                    forces[i] += force
+                    forces[j] -= force
 
             # Non-bonded forces (simplified)
             n_atoms = len(molecule.atoms)
@@ -224,12 +228,13 @@ class DrugDiscoveryClassical:
         angles = np.linspace(0, 2 * np.pi, n_sites)
         radius = 5.0
 
+        rng = np.random.RandomState(0)
         sites = np.zeros((n_sites, 3))
         for i, angle in enumerate(angles):
             sites[i] = [
                 radius * np.cos(angle),
                 radius * np.sin(angle),
-                np.random.uniform(-2, 2)
+                rng.uniform(-2, 2)
             ]
 
         return sites
@@ -238,21 +243,20 @@ class DrugDiscoveryClassical:
                                  n_atoms: int = 20,
                                  seed: Optional[int] = None) -> Molecule:
         """Generate random molecular structure"""
-        if seed is not None:
-            np.random.seed(seed)
+        rng = np.random.RandomState(seed)
 
         # Random atom types (simplified organic molecules)
         atom_types = ['C', 'H', 'O', 'N']
-        atoms = np.random.choice(atom_types, size=n_atoms).tolist()
+        atoms = rng.choice(atom_types, size=n_atoms).tolist()
 
         # Random 3D positions
-        positions = np.random.randn(n_atoms, 3) * 2.0
+        positions = rng.randn(n_atoms, 3) * 2.0
 
         # Generate bonds (connect nearby atoms)
         bonds = []
         for i in range(n_atoms):
             for j in range(i + 1, min(i + 4, n_atoms)):
-                if np.random.random() > 0.5:
+                if rng.random() > 0.5:
                     bonds.append((i, j))
 
         return Molecule(atoms=atoms, positions=positions, bonds=bonds)
@@ -321,7 +325,7 @@ class DrugDiscoveryClassical:
 
     def screen_library(self,
                       library_size: int = 1000,
-                      n_atoms_per_molecule: int = 20) -> List[DrugCandidate]:
+                      n_atoms_per_molecule: int = 20) -> Tuple[List[DrugCandidate], float]:
         """
         Screen a library of drug candidates
 
@@ -330,7 +334,7 @@ class DrugDiscoveryClassical:
             n_atoms_per_molecule: Atoms per molecule
 
         Returns:
-            List of screened drug candidates
+            Tuple of (list of screened drug candidates, elapsed time in seconds)
         """
         start_time = time.time()
 

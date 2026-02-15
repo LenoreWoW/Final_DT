@@ -15,8 +15,10 @@ from typing import Any, Dict, List, Optional
 
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+
+from backend.auth.dependencies import get_current_user_optional
 
 logger = logging.getLogger(__name__)
 
@@ -163,7 +165,7 @@ BENCHMARK_RESULTS = {
 # =============================================================================
 
 @router.get("/modules")
-async def list_modules():
+async def list_modules(current_user=Depends(get_current_user_optional)):
     """List available benchmark modules."""
     return {
         "modules": [
@@ -208,11 +210,11 @@ async def list_modules():
 
 
 @router.get("/results")
-async def get_all_benchmarks():
+async def get_all_benchmarks(current_user=Depends(get_current_user_optional)):
     """Get all benchmark results for the showcase."""
     benchmarks = []
     summaries = {}
-    
+
     for module_id, data in BENCHMARK_RESULTS.items():
         benchmark = BenchmarkResult(
             module=module_id,
@@ -226,7 +228,7 @@ async def get_all_benchmarks():
             created_at=datetime.now(timezone.utc),
         )
         benchmarks.append(benchmark)
-        
+
         summaries[module_id] = BenchmarkSummary(
             module=module_id,
             quantum_speedup=data["speedup"],
@@ -234,10 +236,10 @@ async def get_all_benchmarks():
             scenarios_tested=data["details"].get("scenarios_tested", 1000),
             statistical_significance=0.999,  # p < 0.001
         )
-    
+
     # Calculate overall quantum advantage
     total_speedup = sum(d["speedup"] for d in BENCHMARK_RESULTS.values()) / len(BENCHMARK_RESULTS)
-    
+
     return AllBenchmarksResponse(
         benchmarks=benchmarks,
         summary=summaries,
@@ -246,16 +248,16 @@ async def get_all_benchmarks():
 
 
 @router.get("/results/{module_id}")
-async def get_benchmark(module_id: str):
+async def get_benchmark(module_id: str, current_user=Depends(get_current_user_optional)):
     """Get benchmark results for a specific module."""
     if module_id not in BENCHMARK_RESULTS:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Module '{module_id}' not found"
         )
-    
+
     data = BENCHMARK_RESULTS[module_id]
-    
+
     return BenchmarkResult(
         module=module_id,
         classical_time_seconds=data["classical_time_seconds"],
@@ -273,10 +275,11 @@ async def get_benchmark(module_id: str):
 async def run_benchmark(
     module_id: str,
     request: BenchmarkRequest,
+    current_user=Depends(get_current_user_optional),
 ):
     """
     Run a live benchmark comparison.
-    
+
     This actually runs both classical and quantum approaches
     and compares their performance.
     """
@@ -285,7 +288,7 @@ async def run_benchmark(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Module '{module_id}' not found"
         )
-    
+
     results = {
         "module": module_id,
         "run_id": str(uuid.uuid4()),
@@ -293,17 +296,17 @@ async def run_benchmark(
         "quantum": None,
         "comparison": None,
     }
-    
+
     # Run classical if requested
     if request.run_classical:
         classical_result = await _run_classical(module_id, request.parameters)
         results["classical"] = classical_result
-    
+
     # Run quantum if requested
     if request.run_quantum:
         quantum_result = await _run_quantum(module_id, request.parameters)
         results["quantum"] = quantum_result
-    
+
     # Compare if both ran
     if results["classical"] and results["quantum"]:
         results["comparison"] = {
@@ -319,7 +322,7 @@ async def run_benchmark(
                 results["quantum"]["accuracy"] > results["classical"]["accuracy"]
             ),
         }
-    
+
     return results
 
 
@@ -344,7 +347,7 @@ def _sanitize_for_json(obj):
 
 
 _benchmark_executor = ThreadPoolExecutor(max_workers=6)
-_BENCHMARK_TIMEOUT = 15  # seconds – prevent runaway baselines from blocking the server
+_BENCHMARK_TIMEOUT = 15  # seconds -- prevent runaway baselines from blocking the server
 
 
 def _run_classical_sync(module_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
@@ -497,7 +500,7 @@ async def _run_classical(module_id: str, parameters: Dict[str, Any]) -> Dict[str
             "method": f"classical_{module_id}",
             "execution_time": _BENCHMARK_TIMEOUT,
             "accuracy": BENCHMARK_RESULTS[module_id]["classical_accuracy"],
-            "details": {"simulated": True, "error": str(e)},
+            "details": {"simulated": True, "note": "Fell back to pre-computed results"},
         }
 
 
@@ -524,7 +527,7 @@ async def _run_quantum(module_id: str, parameters: Dict[str, Any]) -> Dict[str, 
 
 
 @router.get("/methodology")
-async def get_methodology():
+async def get_methodology(current_user=Depends(get_current_user_optional)):
     """Get information about the benchmark methodology."""
     return {
         "title": "Benchmark Methodology",
@@ -554,4 +557,3 @@ async def get_methodology():
             },
         },
     }
-

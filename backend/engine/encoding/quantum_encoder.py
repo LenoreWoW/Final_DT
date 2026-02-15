@@ -255,6 +255,11 @@ class QuantumEncoder:
             norm = math.sqrt(sum(abs(a)**2 for a in initial_state))
             if norm > 0:
                 initial_state = [a / norm for a in initial_state]
+            else:
+                # Edge case: all amplitudes collapsed to zero (e.g. normalized == 0
+                # for every qubit).  Fall back to uniform superposition.
+                uniform_amp = complex(1 / math.sqrt(dim), 0)
+                initial_state = [uniform_amp] * dim
 
         return initial_state
     

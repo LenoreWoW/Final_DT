@@ -5,6 +5,7 @@ Provides:
 - Password hashing and verification (via passlib + bcrypt)
 - JWT token creation and verification (via python-jose or PyJWT)
 - FastAPI dependency for extracting the current user from a request
+- Optional auth dependency for endpoints that allow anonymous access
 """
 
 import logging
@@ -24,11 +25,20 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "quantum-twin-platform-dev-secret-key-change-in-production")
+_DEFAULT_SECRET = "quantum-twin-platform-dev-secret-key-change-in-production"
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", _DEFAULT_SECRET)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 hours
 
-if SECRET_KEY == "quantum-twin-platform-dev-secret-key-change-in-production":
+# In production, refuse to start with the insecure default secret
+_environment = os.getenv("ENVIRONMENT", "development").lower()
+if SECRET_KEY == _DEFAULT_SECRET:
+    if _environment in ("production", "prod", "staging"):
+        raise RuntimeError(
+            "FATAL: JWT_SECRET_KEY is still the default value. "
+            "Set a strong, unique JWT_SECRET_KEY environment variable before running in production."
+        )
     logger.warning("Using default JWT secret key — set JWT_SECRET_KEY env var in production")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
@@ -123,3 +133,44 @@ async def get_current_user(
         raise credentials_exception
 
     return user
+
+
+async def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> Optional[UserModel]:
+    """
+    FastAPI dependency that returns the current user if a valid token is
+    present, or ``None`` for anonymous/unauthenticated requests.
+
+    Use this for endpoints that should work for both logged-in and
+    anonymous users (e.g. read-only public data).
+    """
+    if token is None:
+        return None
+
+    try:
+        payload = _decode_token(token)
+        username: Optional[str] = payload.get("sub")
+        if username is None:
+            return None
+    except _JWT_ERROR:
+        return None
+
+    return db.query(UserModel).filter(UserModel.username == username).first()
+
+
+def decode_token_safe(token: str) -> Optional[str]:
+    """
+    Decode a JWT token with full signature verification and return the
+    ``sub`` claim (username), or ``None`` if the token is invalid.
+
+    Used by the rate-limiter middleware so it never trusts unverified tokens.
+    """
+    try:
+        payload = _decode_token(token)
+        return payload.get("sub") or payload.get("user_id")
+    except _JWT_ERROR:
+        return None
+    except Exception:
+        return None

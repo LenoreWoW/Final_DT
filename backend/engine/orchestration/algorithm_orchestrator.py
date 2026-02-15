@@ -229,7 +229,18 @@ class AlgorithmOrchestrator:
         constraints = constraints or {}
         
         # Determine goal type
-        goal = GoalType(system.goal) if system.goal else GoalType.PREDICT
+        goal = GoalType.PREDICT  # default
+        if system.goal:
+            try:
+                goal = GoalType(system.goal)
+            except ValueError:
+                # Free-text goal that doesn't map to a GoalType enum value;
+                # attempt a keyword-based lookup, otherwise keep the default.
+                _goal_lower = system.goal.lower()
+                for member in GoalType:
+                    if member.value in _goal_lower:
+                        goal = member
+                        break
         
         # Calculate algorithm scores
         scores = self._calculate_algorithm_scores(system, goal, query_type)
@@ -261,7 +272,7 @@ class AlgorithmOrchestrator:
             primary_algorithm=primary,
             fallback_algorithm=fallback,
             resource_estimate=resource_estimate,
-            confidence=scores[primary] / max(scores.values()),
+            confidence=scores[primary] / max(scores.values()) if max(scores.values()) > 0 else 0.0,
             reasoning=reasoning,
         )
     

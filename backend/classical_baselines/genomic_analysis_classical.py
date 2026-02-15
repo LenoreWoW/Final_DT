@@ -103,15 +103,14 @@ class RandomForest:
         self.random_state = random_state
         self.trees = []
 
-        if random_state is not None:
-            np.random.seed(random_state)
+        self.rng = np.random.RandomState(random_state)
 
     def _bootstrap_sample(self,
                          X: np.ndarray,
                          y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Create bootstrap sample"""
         n_samples = X.shape[0]
-        indices = np.random.choice(n_samples, size=n_samples, replace=True)
+        indices = self.rng.choice(n_samples, size=n_samples, replace=True)
         return X[indices], y[indices]
 
     def _build_tree(self,
@@ -147,7 +146,7 @@ class RandomForest:
 
         # Random feature subset
         n_features_to_try = max(1, int(np.sqrt(n_features)))
-        feature_indices = np.random.choice(
+        feature_indices = self.rng.choice(
             n_features,
             size=n_features_to_try,
             replace=False
@@ -400,8 +399,7 @@ def generate_synthetic_gene_expression(n_samples: int = 200,
     Returns:
         X, y where X is gene expression and y is labels
     """
-    if seed is not None:
-        np.random.seed(seed)
+    rng = np.random.RandomState(seed)
 
     # Generate labels (balanced)
     y = np.array([0, 1] * (n_samples // 2))
@@ -409,13 +407,13 @@ def generate_synthetic_gene_expression(n_samples: int = 200,
         y = np.append(y, 0)
 
     # Generate gene expression
-    X = np.random.randn(n_samples, n_genes)
+    X = rng.randn(n_samples, n_genes)
 
     # Make some genes informative
     for i in range(n_informative):
         # These genes are correlated with disease status
-        signal_strength = np.random.uniform(1.0, 3.0)
-        X[:, i] += y * signal_strength + np.random.randn(n_samples) * 0.5
+        signal_strength = rng.uniform(1.0, 3.0)
+        X[:, i] += y * signal_strength + rng.randn(n_samples) * 0.5
 
     # Normalize
     X = (X - np.mean(X, axis=0)) / (np.std(X, axis=0) + 1e-8)

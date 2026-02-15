@@ -4,6 +4,7 @@ Twin API Router - CRUD operations for digital twins.
 Integrates with the TwinGenerator engine for simulation and query execution.
 """
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -11,7 +12,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.models.database import get_db, TwinModel, SimulationModel, init_database, engine
+from backend.models.database import get_db, TwinModel, SimulationModel
 from backend.models.schemas import (
     Twin,
     TwinCreate,
@@ -26,14 +27,29 @@ from backend.models.schemas import (
     ExtractedSystem,
 )
 from backend.engine.twin_generator import TwinGenerator, SimulationConfig
+from backend.auth.dependencies import get_current_user_optional
 
-# Initialize database tables
-init_database(engine)
+logger = logging.getLogger(__name__)
 
-# Shared TwinGenerator instance
-_generator = TwinGenerator()
+# Explicit allowlist of fields that can be updated via PATCH
+_TWIN_UPDATABLE_FIELDS = {"name", "description", "status"}
 
 router = APIRouter(prefix="/twins", tags=["twins"])
+
+
+# ---------------------------------------------------------------------------
+# Lazy-initialised TwinGenerator (avoid heavy work at import time)
+# ---------------------------------------------------------------------------
+
+_generator: Optional[TwinGenerator] = None
+
+
+def _get_generator() -> TwinGenerator:
+    """Return the shared TwinGenerator instance, creating it on first use."""
+    global _generator
+    if _generator is None:
+        _generator = TwinGenerator()
+    return _generator
 
 
 # =============================================================================
@@ -41,16 +57,20 @@ router = APIRouter(prefix="/twins", tags=["twins"])
 # =============================================================================
 
 @router.post("/", response_model=Twin, status_code=status.HTTP_201_CREATED)
-async def create_twin(twin_data: TwinCreate, db: Session = Depends(get_db)):
+async def create_twin(
+    twin_data: TwinCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_optional),
+):
     """
     Create a new digital twin.
-    
+
     The twin starts in DRAFT status. As the user provides more information
     through conversation, it transitions to GENERATING and then ACTIVE.
     """
     twin_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
-    
+
     db_twin = TwinModel(
         id=twin_id,
         name=twin_data.name,
@@ -61,11 +81,11 @@ async def create_twin(twin_data: TwinCreate, db: Session = Depends(get_db)):
         created_at=now,
         updated_at=now,
     )
-    
+
     db.add(db_twin)
     db.commit()
     db.refresh(db_twin)
-    
+
     return _twin_model_to_schema(db_twin)
 
 
@@ -75,31 +95,32 @@ async def list_twins(
     domain: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_optional),
 ):
     """List all digital twins with optional filtering."""
     query = db.query(TwinModel)
-    
+
     if status:
         query = query.filter(TwinModel.status == status.value)
     if domain:
         query = query.filter(TwinModel.domain == domain)
-    
+
     twins = query.offset(skip).limit(limit).all()
     return [_twin_model_to_schema(t) for t in twins]
 
 
 @router.get("/{twin_id}", response_model=Twin)
-async def get_twin(twin_id: str, db: Session = Depends(get_db)):
+async def get_twin(twin_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user_optional)):
     """Get a specific digital twin by ID."""
     db_twin = db.query(TwinModel).filter(TwinModel.id == twin_id).first()
-    
+
     if not db_twin:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Twin with id {twin_id} not found"
         )
-    
+
     return _twin_model_to_schema(db_twin)
 
 
@@ -107,43 +128,46 @@ async def get_twin(twin_id: str, db: Session = Depends(get_db)):
 async def update_twin(
     twin_id: str,
     twin_update: TwinUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_optional),
 ):
     """Update a digital twin."""
     db_twin = db.query(TwinModel).filter(TwinModel.id == twin_id).first()
-    
+
     if not db_twin:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Twin with id {twin_id} not found"
         )
-    
+
     update_data = twin_update.model_dump(exclude_unset=True)
-    
+
     for field, value in update_data.items():
+        if field not in _TWIN_UPDATABLE_FIELDS:
+            continue  # Silently skip fields not in the allowlist
         if field == "status" and value:
             setattr(db_twin, field, value.value)
         else:
             setattr(db_twin, field, value)
-    
+
     db_twin.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_twin)
-    
+
     return _twin_model_to_schema(db_twin)
 
 
 @router.delete("/{twin_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_twin(twin_id: str, db: Session = Depends(get_db)):
+async def delete_twin(twin_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user_optional)):
     """Delete a digital twin."""
     db_twin = db.query(TwinModel).filter(TwinModel.id == twin_id).first()
-    
+
     if not db_twin:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Twin with id {twin_id} not found"
         )
-    
+
     db.delete(db_twin)
     db.commit()
 
@@ -156,7 +180,8 @@ async def delete_twin(twin_id: str, db: Session = Depends(get_db)):
 async def run_simulation(
     twin_id: str,
     request: SimulationRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_optional),
 ):
     """
     Run a simulation on the digital twin.
@@ -197,6 +222,7 @@ async def run_simulation(
         )
 
     # Configure and run through the real TwinGenerator
+    generator = _get_generator()
     config = SimulationConfig(
         time_steps=request.time_steps,
         scenarios=request.scenarios,
@@ -204,9 +230,10 @@ async def run_simulation(
     )
 
     try:
-        sim_result = _generator.simulate(system, config)
+        sim_result = generator.simulate(system, config)
     except Exception as exc:
         # Fallback: generate a basic result if the engine fails
+        logger.error("Simulation engine error for twin %s: %s", twin_id, exc, exc_info=True)
         import time
         start_time = time.time()
         results = {
@@ -218,7 +245,6 @@ async def run_simulation(
                 "best_scenario": 0.92,
                 "worst_scenario": 0.58,
             },
-            "engine_error": str(exc),
         }
         execution_time = time.time() - start_time
 
@@ -268,22 +294,23 @@ async def run_simulation(
 async def query_twin(
     twin_id: str,
     request: QueryRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_optional),
 ):
     """
     Query the digital twin.
-    
+
     Supports prediction, optimization, exploration, counterfactual,
     understanding, and comparison queries.
     """
     db_twin = db.query(TwinModel).filter(TwinModel.id == twin_id).first()
-    
+
     if not db_twin:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Twin with id {twin_id} not found"
         )
-    
+
     # Build ExtractedSystem from the twin's stored data
     try:
         extracted = db_twin.extracted_system
@@ -301,8 +328,9 @@ async def query_twin(
         )
 
     # Run through the real TwinGenerator query engine
+    generator = _get_generator()
     try:
-        qr = _generator.query(
+        qr = generator.query(
             system=system,
             query=request.query,
             query_type=request.query_type,
@@ -336,7 +364,7 @@ async def query_twin(
 # =============================================================================
 
 @router.get("/{twin_id}/qasm")
-async def get_twin_qasm(twin_id: str, db: Session = Depends(get_db)):
+async def get_twin_qasm(twin_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user_optional)):
     """
     Get OpenQASM circuits for a digital twin.
 
@@ -409,7 +437,7 @@ def _twin_model_to_schema(db_twin: TwinModel) -> Twin:
 def _detect_query_type(query: str) -> QueryType:
     """Detect query type from natural language."""
     query_lower = query.lower()
-    
+
     if any(w in query_lower for w in ["what happens", "predict", "future", "will"]):
         return QueryType.PREDICTION
     elif any(w in query_lower for w in ["best", "optimal", "optimize", "maximize", "minimize"]):
@@ -424,4 +452,3 @@ def _detect_query_type(query: str) -> QueryType:
         return QueryType.COMPARISON
     else:
         return QueryType.PREDICTION  # Default
-

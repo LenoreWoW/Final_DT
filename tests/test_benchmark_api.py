@@ -9,12 +9,6 @@ Tests cover:
 """
 
 import pytest
-import sys
-from pathlib import Path
-
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -48,14 +42,21 @@ def override_get_db():
 
 @pytest.fixture(scope="function")
 def client():
+    """Create test client with fresh database for each test.
+
+    NOTE: This fixture intentionally shadows the conftest ``client`` fixture
+    because this module needs its own dedicated in-memory engine and session
+    setup that is independent of the shared conftest database.
+    """
     Base.metadata.create_all(bind=engine)
     app.dependency_overrides[get_db] = override_get_db
-    
+
     with TestClient(app) as c:
         yield c
-    
+
+    # Cleanup - drop tables and remove only *our* override
     Base.metadata.drop_all(bind=engine)
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_db, None)
 
 
 # =============================================================================
@@ -72,7 +73,7 @@ class TestModuleListing:
         
         data = response.json()
         assert "modules" in data
-        assert len(data["modules"]) == 6  # 6 healthcare modules
+        assert len(data["modules"]) >= 6  # At least 6 healthcare modules
 
     def test_module_has_required_fields(self, client):
         """Test that each module has required fields."""

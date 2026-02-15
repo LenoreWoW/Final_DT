@@ -9,12 +9,6 @@ Tests cover:
 """
 
 import pytest
-import sys
-from pathlib import Path
-
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -51,19 +45,24 @@ def override_get_db():
 
 @pytest.fixture(scope="function")
 def client():
-    """Create test client with fresh database for each test."""
+    """Create test client with fresh database for each test.
+
+    NOTE: This fixture intentionally shadows the conftest ``client`` fixture
+    because this module needs its own dedicated in-memory engine and session
+    setup that is independent of the shared conftest database.
+    """
     # Create tables
     Base.metadata.create_all(bind=engine)
-    
+
     # Override dependency
     app.dependency_overrides[get_db] = override_get_db
-    
+
     with TestClient(app) as c:
         yield c
-    
-    # Cleanup
+
+    # Cleanup - drop tables and remove only *our* override
     Base.metadata.drop_all(bind=engine)
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_db, None)
 
 
 # =============================================================================
@@ -312,8 +311,8 @@ class TestConversation:
         assert response.status_code == 200
         
         data = response.json()
-        if data.get("extracted_info"):
-            assert data["extracted_info"]["domain"] == "healthcare"
+        assert data.get("extracted_info") is not None, "extracted_info should always be present"
+        assert data["extracted_info"]["domain"] == "healthcare"
 
     def test_get_conversation_history(self, client):
         """Test getting conversation history."""

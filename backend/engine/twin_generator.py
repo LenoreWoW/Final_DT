@@ -173,32 +173,34 @@ class TwinGenerator:
         self,
         system: ExtractedSystem,
         config: SimulationConfig,
+        twin_id: Optional[str] = None,
     ) -> SimulationResult:
         """
         Run a simulation on the digital twin.
-        
+
         Args:
             system: The extracted system to simulate
             config: Simulation configuration
-            
+            twin_id: The actual twin ID (uses a generated UUID if not provided)
+
         Returns:
             SimulationResult with simulation outcomes
         """
         start_time = time.time()
-        twin_id = str(uuid.uuid4())
+        twin_id = twin_id or str(uuid.uuid4())
         simulation_id = str(uuid.uuid4())
-        
+
         # Encode and orchestrate
         encoding = self.encoder.encode(system, max_qubits=config.max_qubits)
         orchestration = self.orchestrator.orchestrate(system, encoding)
-        
+
         # Run simulation based on domain and algorithm
         results = self._run_quantum_simulation(
             system, encoding, orchestration, config
         )
-        
+
         execution_time = time.time() - start_time
-        
+
         return SimulationResult(
             twin_id=twin_id,
             simulation_id=simulation_id,
@@ -207,7 +209,7 @@ class TwinGenerator:
             results=results,
             predictions=self._generate_predictions(results, system),
             quantum_advantage={
-                "scenarios_tested": config.scenarios * 1000,
+                "scenarios_tested": config.scenarios,
                 "speedup": orchestration.pipeline.quantum_advantage_factor,
                 "classical_equivalent_seconds": (
                     execution_time * orchestration.pipeline.quantum_advantage_factor
@@ -382,9 +384,9 @@ def generate_twin(description: str, existing: Optional[ExtractedSystem] = None) 
     return generator.generate(description, existing)
 
 
-def run_simulation(system: ExtractedSystem, config: SimulationConfig) -> SimulationResult:
+def run_simulation(system: ExtractedSystem, config: SimulationConfig, twin_id: Optional[str] = None) -> SimulationResult:
     """Convenience function to run a simulation."""
-    return generator.simulate(system, config)
+    return generator.simulate(system, config, twin_id=twin_id)
 
 
 def query_twin(system: ExtractedSystem, query: str) -> QueryResponse:

@@ -102,7 +102,7 @@ FastAPI's asynchronous architecture enables concurrent quantum circuit execution
 
 The NLP pipeline transforms unstructured user input into structured system specifications suitable for digital twin generation. Built on spaCy~\cite{honnibal2020spacy}, it operates as a sequence of processing stages: tokenization, POS tagging, NER, dependency parsing, and domain-adaptive entity extraction. The first four stages leverage spaCy's pre-trained English model (\texttt{en\_core\_web\_sm}), providing robust baseline performance for general English text. The fifth stage---domain-adaptive entity extraction---is a custom component applying rule-based pattern matching to identify domain-specific entities, relationships, constraints, and goals not captured by general-purpose NER.
 
-The pipeline defines five custom entity types: \texttt{SYSTEM\_ENTITY} (physical or conceptual objects), \texttt{CONSTRAINT} (limitations), \texttt{GOAL} (optimization objectives), \texttt{METRIC} (quantitative measures), and \texttt{RELATIONSHIP} (entity connections). These types are domain-agnostic in definition but domain-specific in instantiation, with separate pattern rule sets per domain.
+The pipeline defines four structured entity classes: \texttt{Entity} (with identifier, name, type, and properties dictionary representing physical or conceptual objects), \texttt{Relationship} (source and target entity identifiers, type, and strength), \texttt{Rule} (identifier, name, description, and type encoding domain logic), and \texttt{Constraint} (identifier, name, type, value, and comparison operator). Goals are extracted as simple string objectives rather than structured objects, reflecting the observation that optimization targets are typically expressed as concise directives. These classes are domain-agnostic in definition but domain-specific in instantiation, with separate pattern rule sets per domain.
 
 Relationship inference analyzes spaCy's dependency parse tree: when two entities are connected through a dependency path of length three or fewer, a relationship is inferred with type determined by the intervening verb or preposition. Confidence scoring considers pattern specificity and entity frequency; low-confidence items are flagged for clarification. The extraction procedure is presented in Listing~\ref{lst:entity_extraction}.
 
@@ -157,7 +157,7 @@ Problem type classification determines the computational nature of the user's sy
 \textbf{Problem Type} & \textbf{Algorithm} & \textbf{Example Application} \\
 \hline
 Combinatorial Optimization & QAOA & Route planning, scheduling, resource allocation \\
-Classification & VQC / QSVM & Patient classification, fraud detection, quality assessment \\
+Classification & VQC & Patient classification, fraud detection, quality assessment \\
 Anomaly Detection & Quantum Autoencoder & Sensor anomaly detection, outlier identification \\
 Correlation Analysis & Tree Tensor Network & Gene interaction discovery, feature correlation \\
 Sensor Integration & Quantum Sensing DT & Environmental monitoring, precision measurement \\
@@ -174,16 +174,16 @@ Classification uses a rule-based decision tree: optimization keywords $\rightarr
 \label{subsec:conversation_state_machine}
 % -----------------------------------------------------------------------------
 
-The conversational interface is governed by a finite state machine defining seven states: \texttt{GREETING}, \texttt{DOMAIN\_IDENTIFICATION}, \texttt{ENTITY\_EXTRACTION}, \texttt{GOAL\_CLARIFICATION}, \texttt{CONSTRAINT\_GATHERING}, \texttt{TWIN\_GENERATION}, and \texttt{ACTIVE}. Each state corresponds to a phase of information gathering, and transitions are triggered by the completeness of the extracted specification. Figure~\ref{fig:state_machine} illustrates the state machine and its transition conditions.
+The conversational interface is governed by a finite state machine defining six states: \texttt{GREETING}, \texttt{PROBLEM\_DESCRIPTION}, \texttt{CLARIFYING\_QUESTIONS}, \texttt{DATA\_REQUEST}, \texttt{CONFIRMATION}, and \texttt{GENERATION}. Each state corresponds to a phase of information gathering, and transitions are triggered by the completeness of the extracted specification. Figure~\ref{fig:state_machine} illustrates the state machine and its transition conditions.
 
-The \texttt{GREETING} state handles initial interaction; \texttt{DOMAIN\_IDENTIFICATION} classifies the application domain via keyword confidence scoring across ten supported domains (healthcare, sports, military, environment, finance, logistics, manufacturing, social, science, and general); \texttt{ENTITY\_EXTRACTION} actively solicits system details; \texttt{GOAL\_CLARIFICATION} prompts for objectives when entities exist but no goal is identified; and \texttt{CONSTRAINT\_GATHERING} collects limitations and requirements. The transition to \texttt{TWIN\_GENERATION} requires at least two entities, one relationship, and one goal. Upon successful generation, the twin enters the \texttt{ACTIVE} state, where it can be queried, visualized, and updated. This DRAFT-to-ACTIVE transition is persisted in the database and reflected in the frontend.
+The \texttt{GREETING} state handles initial interaction; \texttt{PROBLEM\_DESCRIPTION} captures the user's system description and classifies the application domain via keyword confidence scoring across ten supported domains (healthcare, sports, military, environment, finance, logistics, manufacturing, social, science, and general); \texttt{CLARIFYING\_QUESTIONS} actively solicits additional system details when entities or goals are incomplete; \texttt{DATA\_REQUEST} prompts for quantitative parameters, constraints, and data sources; and \texttt{CONFIRMATION} presents a summary of the extracted specification for user validation. The transition to \texttt{GENERATION} requires at least two entities, one relationship, and one goal. Upon successful generation, the twin's status transitions from \texttt{DRAFT} to \texttt{ACTIVE}---a lifecycle transition managed by the separate \texttt{TwinStatus} enumeration rather than the conversation state machine, persisted in the database and reflected in the frontend.
 
 The state machine supports backward transitions: additional entity information arriving during goal clarification is processed without formal state transitions, and edge cases such as single-message descriptions or contradictory inputs are handled through rapid transitions and clarification requests respectively.
 
 \begin{figure}[htbp]
 \centering
-\fbox{\parbox{0.85\textwidth}{\centering\vspace{2.5cm}\textit{Conversation State Machine: GREETING $\rightarrow$ DOMAIN\_IDENTIFICATION $\rightarrow$ ENTITY\_EXTRACTION $\rightarrow$ GOAL\_CLARIFICATION $\rightarrow$ CONSTRAINT\_GATHERING $\rightarrow$ TWIN\_GENERATION $\rightarrow$ ACTIVE. Backward transitions enabled for clarification and refinement.}\vspace{2.5cm}}}
-\caption{Conversation state machine governing the twin lifecycle from initial greeting through twin generation and activation.}
+\fbox{\parbox{0.85\textwidth}{\centering\vspace{2.5cm}\textit{Conversation State Machine: GREETING $\rightarrow$ PROBLEM\_DESCRIPTION $\rightarrow$ CLARIFYING\_QUESTIONS $\rightarrow$ DATA\_REQUEST $\rightarrow$ CONFIRMATION $\rightarrow$ GENERATION. Backward transitions enabled for clarification and refinement. Twin status (DRAFT $\rightarrow$ ACTIVE) is managed separately.}\vspace{2.5cm}}}
+\caption{Conversation state machine governing information gathering from initial greeting through twin generation. The twin lifecycle status (DRAFT to ACTIVE) is managed by a separate enumeration.}
 \label{fig:state_machine}
 \end{figure}
 
@@ -192,7 +192,7 @@ The state machine supports backward transitions: additional entity information a
 \label{subsec:provider_abstraction}
 % -----------------------------------------------------------------------------
 
-A provider abstraction layer separates the twin generation engine from the NLP implementation. Two concrete providers are implemented: the \texttt{LocalProvider} using the rule-based spaCy pipeline for deterministic behavior, and the \texttt{AnthropicProvider} using Anthropic's Claude API for enhanced extraction. A \texttt{ProviderFactory} enables hot-swapping between providers without code changes.
+A provider abstraction layer separates the twin generation engine from the NLP implementation. Two concrete providers are implemented: the \texttt{LocalProvider} using the rule-based spaCy pipeline for deterministic behavior, and the \texttt{AnthropicProvider} using Anthropic's Claude API for enhanced extraction. A provider abstraction layer with a common base class enables swapping between providers without modifying downstream code.
 
 % =============================================================================
 \section{Universal Twin Generation Engine}
@@ -230,21 +230,21 @@ PROCEDURE DecomposeProblem(E, R, C, G)
 END PROCEDURE
 \end{lstlisting}
 
-The algorithm classifies the problem type, extracts variables from entities exceeding confidence threshold $\tau = 0.5$, and formalizes constraints as mathematical expressions. Compound problems produce multiple specifications that the twin composition stage integrates.
+The algorithm classifies the problem type, extracts variables from entities exceeding confidence threshold $\tau = 0.1$, and formalizes constraints as mathematical expressions. Compound problems produce multiple specifications that the twin composition stage integrates.
 
 % -----------------------------------------------------------------------------
 \subsection{Algorithm Selection}
 \label{subsec:algorithm_selection}
 % -----------------------------------------------------------------------------
 
-Algorithm selection maps each problem specification onto quantum algorithms from the platform's library. The selection follows a decision tree that uses problem type as the primary discriminant and problem characteristics (variable count, data type, qubit budget) as secondary factors. For optimization, QAOA~\cite{farhi2014qaoa} is selected with depth $p$ scaled by problem size ($p = 1$ for $<$8 variables, $p = 2$ for 8--15, $p = 3$ for larger). For classification, VQC~\cite{schuld2020circuit} is preferred for larger datasets ($>$50 samples) where variational training can exploit the data volume, while QSVM~\cite{havlicek2019supervised} is preferred for smaller datasets where the quantum kernel provides superior generalization. For anomaly detection, the quantum autoencoder~\cite{romero2017quantum} is selected; for correlation analysis, the tree tensor network~\cite{orus2019tensor, huggins2019towards}; for sensing, the quantum sensing module~\cite{degen2017quantum}; and for complex modeling, the neural quantum digital twin~\cite{cong2019quantum}. Figure~\ref{fig:algorithm-mapping} illustrates this taxonomy.
+Algorithm selection maps each problem specification onto quantum algorithms from the platform's library. The selection follows a decision tree that uses problem type as the primary discriminant and problem characteristics (variable count, data type, qubit budget) as secondary factors. For optimization, QAOA~\cite{farhi2014qaoa} is selected with depth $p$ scaled by problem size ($p = 1$ for $<$8 variables, $p = 2$ for 8--15, $p = 3$ for larger). For classification, VQC~\cite{schuld2020circuit} is selected with architecture variations adapted to dataset size: deeper variational circuits with additional entangling layers for larger datasets ($>$50 samples) where variational training can exploit the data volume, and shallower circuits with fewer parameters for smaller datasets to mitigate overfitting. For anomaly detection, the quantum autoencoder~\cite{romero2017quantum} is selected; for correlation analysis, the tree tensor network~\cite{orus2019tensor, huggins2019towards}; for sensing, the quantum sensing module~\cite{degen2017quantum}; and for complex modeling, the neural quantum digital twin~\cite{cong2019quantum}. Figure~\ref{fig:algorithm-mapping} illustrates this taxonomy.
 
 \begin{figure}[htbp]
 \centering
 \fbox{\begin{minipage}{0.85\textwidth}
 \centering
 \vspace{2.5cm}
-{\small\textit{Problem type taxonomy and quantum algorithm mapping: Optimization $\rightarrow$ QAOA, Classification $\rightarrow$ VQC/QSVM, Simulation $\rightarrow$ Quantum Simulation, Correlation $\rightarrow$ TTN, Anomaly Detection $\rightarrow$ Quantum Autoencoder.}}
+{\small\textit{Problem type taxonomy and quantum algorithm mapping: Optimization $\rightarrow$ QAOA, Classification $\rightarrow$ VQC, Simulation $\rightarrow$ Quantum Simulation, Correlation $\rightarrow$ TTN, Anomaly Detection $\rightarrow$ Quantum Autoencoder.}}
 \vspace{2.5cm}
 \end{minipage}}
 \caption{Problem type taxonomy and quantum algorithm mapping.}
@@ -266,7 +266,7 @@ The platform implements three encoding strategies for mapping classical data to 
 |\psi\rangle = \sum_{i=0}^{N-1} x_i |i\rangle, \quad \text{where } \sum_{i=0}^{N-1} |x_i|^2 = 1.
 \label{eq:amplitude_encoding}
 \end{equation}
-This requires only $n = \lceil \log_2 N \rceil$ qubits for $N$ values but $O(N)$ preparation gates~\cite{nielsen2010quantum}. It is used by the QSVM and quantum autoencoder.
+This requires only $n = \lceil \log_2 N \rceil$ qubits for $N$ values but $O(N)$ preparation gates~\cite{nielsen2010quantum}. It is used by the quantum autoencoder.
 
 \textit{Angle encoding} maps each data value $x_i$ to a rotation angle on a dedicated qubit:
 \begin{equation}
@@ -294,7 +294,7 @@ The twin composition stage assembles the outputs of one or more quantum algorith
 \label{subsec:classical_fallback}
 % -----------------------------------------------------------------------------
 
-Every quantum algorithm is paired with a classical counterpart (e.g., genetic algorithms~\cite{holland1975adaptation} for QAOA, random forest/SVM~\cite{cortes1995support} for VQC/QSVM, PCA for the autoencoder). Fallback is triggered by quantum execution failure, qubit limit exceeded, or explicit user preference. All fallbacks set \texttt{used\_quantum = False} with documented reasons, ensuring benchmarking results are not contaminated by silent fallbacks.
+Every quantum algorithm is paired with a classical counterpart (e.g., genetic algorithms~\cite{holland1975adaptation} for QAOA, random forest/SVM~\cite{cortes1995support} for VQC, PCA for the autoencoder). Fallback is triggered by quantum execution failure, qubit limit exceeded, or explicit user preference. All fallbacks set \texttt{used\_quantum = False} with documented reasons, ensuring benchmarking results are not contaminated by silent fallbacks.
 
 % -----------------------------------------------------------------------------
 \subsection{OpenQASM Export}

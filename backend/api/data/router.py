@@ -9,12 +9,17 @@ Endpoints:
 
 import io
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
+
+from backend.auth.dependencies import get_current_user_optional
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/data", tags=["data"])
 
@@ -100,7 +105,7 @@ def _infer_dtype(series) -> str:
         if series.nunique() < min(20, max(len(series) * 0.05, 2)):
             return "categorical"
     except TypeError:
-        # Unhashable values (lists, dicts inside cells) → treat as text
+        # Unhashable values (lists, dicts inside cells) -> treat as text
         return "text"
     return "text"
 
@@ -229,7 +234,11 @@ def _parse_json_to_dataframe(contents: bytes):
 # ---------------------------------------------------------------------------
 
 @router.post("/upload", response_model=DataUploadResponse, status_code=status.HTTP_201_CREATED)
-async def upload_data(file: UploadFile = File(...)):
+async def upload_data(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user_optional),
+):
     """
     Upload a CSV, JSON, or Excel file for analysis.
 
@@ -237,6 +246,19 @@ async def upload_data(file: UploadFile = File(...)):
     entity/property mappings, and returns a structured summary
     that the frontend can use to configure twin creation.
     """
+    # Pre-validate Content-Length header before reading body
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            declared_size = int(content_length)
+            if declared_size > MAX_FILE_SIZE_MB * 1024 * 1024:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"File exceeds the maximum allowed size of {MAX_FILE_SIZE_MB} MB",
+                )
+        except ValueError:
+            pass  # Non-integer Content-Length; let the read proceed
+
     # Validate filename
     if not file.filename:
         raise HTTPException(
@@ -286,9 +308,10 @@ async def upload_data(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as exc:
+        logger.warning("Could not parse uploaded file %s: %s", file.filename, exc)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Could not parse file: {str(exc)}",
+            detail="Could not parse file. Please check the format and try again.",
         )
 
     if df.empty:

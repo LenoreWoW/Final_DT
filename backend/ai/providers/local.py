@@ -571,10 +571,6 @@ class LocalAIProvider(AIProvider):
         else:
             logger.info("LocalAIProvider initialized in rule-only mode (spaCy unavailable)")
 
-        # Track accumulated state across the conversation
-        self._accumulated_domain: Optional[str] = None
-        self._accumulated_problems: List[Tuple[ProblemType, float]] = []
-
     # ------------------------------------------------------------------
     # AIProvider interface
     # ------------------------------------------------------------------
@@ -582,14 +578,17 @@ class LocalAIProvider(AIProvider):
     async def chat(self, message: str, conversation_history: list) -> dict:
         """
         Process a single user message with spaCy NER + rule-based logic.
+
+        All accumulated state is derived from ``conversation_history`` so
+        that separate conversations never contaminate each other.
         """
         # 1. Entity extraction with spaCy
         spacy_entities = _extract_spacy_entities(message)
         noun_chunks = _extract_noun_chunks(message)
 
-        # 2. Domain detection (merge with accumulated knowledge)
+        # 2. Domain detection -- derive from the full conversation
+        #    (no instance-level state; everything comes from the history)
         domain_scores = _detect_domains(message)
-        # Also score across entire conversation for context
         full_text = " ".join(
             m.get("content", "") for m in conversation_history
             if m.get("role") == "user"
@@ -597,13 +596,10 @@ class LocalAIProvider(AIProvider):
         cumulative_scores = _detect_domains(full_text)
         msg_domain = _primary_domain(domain_scores)
         cumulative_domain = _primary_domain(cumulative_scores)
-        domain = msg_domain or cumulative_domain or self._accumulated_domain
-        self._accumulated_domain = domain
+        domain = msg_domain or cumulative_domain
 
-        # 3. Problem-type classification
+        # 3. Problem-type classification (from full conversation text)
         problem_types = _detect_problem_types(full_text)
-        if problem_types:
-            self._accumulated_problems = problem_types
 
         # 4. Conversation state
         state = _infer_conversation_state(
@@ -614,7 +610,7 @@ class LocalAIProvider(AIProvider):
         response_text, follow_ups = _build_response(
             state=state,
             domain=domain,
-            problem_types=problem_types or self._accumulated_problems,
+            problem_types=problem_types,
             spacy_entities=spacy_entities,
             noun_chunks=noun_chunks,
             message=message,
@@ -631,7 +627,7 @@ class LocalAIProvider(AIProvider):
             "all_problem_types": [
                 {"type": pt.value, "confidence": round(conf, 3),
                  "algorithm": PROBLEM_TO_ALGORITHM.get(pt, "")}
-                for pt, conf in (problem_types or self._accumulated_problems)
+                for pt, conf in problem_types
             ],
             "noun_chunks": noun_chunks,
             "conversation_state": state.value,
