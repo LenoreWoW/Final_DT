@@ -5,7 +5,7 @@ For MVP, we use SQLite. Production will use PostgreSQL.
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, String, Text, Float, Integer, JSON, Boolean, create_engine
@@ -29,7 +29,7 @@ class OrganizationModel(Base):
     slug = Column(String(100), unique=True, nullable=False)
     tier = Column(String(50), default="free")
     max_members = Column(Integer, default=5)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     users = relationship("UserModel", back_populates="organization")
     twins = relationship("TwinModel", back_populates="organization")
@@ -43,7 +43,7 @@ class UserModel(Base):
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(200), unique=True, nullable=False)
     hashed_password = Column(String(200), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # SaaS fields
     tier = Column(String(50), default="free")
@@ -89,8 +89,8 @@ class TwinModel(Base):
     is_public = Column(Boolean, default=False)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     conversations = relationship("ConversationModel", back_populates="twin", cascade="all, delete-orphan")
@@ -112,8 +112,8 @@ class ConversationModel(Base):
     context = Column(JSON, default=dict)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     twin = relationship("TwinModel", back_populates="conversations")
@@ -140,7 +140,7 @@ class SimulationModel(Base):
     execution_time_seconds = Column(Float, default=0.0)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     twin = relationship("TwinModel", back_populates="simulations")
@@ -172,7 +172,7 @@ class BenchmarkModel(Base):
     qasm_circuit = Column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class ApiKeyModel(Base):
@@ -185,7 +185,7 @@ class ApiKeyModel(Base):
     name = Column(String(100), default="default")
     is_active = Column(Boolean, default=True)
     last_used_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = Column(DateTime, nullable=True)
 
     user = relationship("UserModel", back_populates="api_keys")
@@ -218,7 +218,7 @@ class DataUploadModel(Base):
     row_count = Column(Integer, nullable=True)
     column_count = Column(Integer, nullable=True)
     metadata_json = Column(JSON, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class UsageTrackingModel(Base):
@@ -231,7 +231,7 @@ class UsageTrackingModel(Base):
     method = Column(String(10), nullable=False)
     status_code = Column(Integer, nullable=True)
     response_time_ms = Column(Float, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("UserModel", back_populates="usage_records")
 

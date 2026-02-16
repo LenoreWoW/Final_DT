@@ -90,14 +90,32 @@ def _infer_file_type(filename: str) -> str:
 def _infer_dtype(series) -> str:
     """Map a pandas series dtype to a human-readable string."""
     import numpy as np
+    import pandas as pd
 
     dtype = series.dtype
-    if np.issubdtype(dtype, np.number):
+
+    # Handle pandas extension dtypes first (StringDtype, Int64Dtype, etc.)
+    if isinstance(dtype, pd.api.types.CategoricalDtype):
+        return "categorical"
+    if isinstance(dtype, pd.StringDtype):
+        return "text"
+    if isinstance(dtype, (pd.Int8Dtype, pd.Int16Dtype, pd.Int32Dtype, pd.Int64Dtype,
+                          pd.UInt8Dtype, pd.UInt16Dtype, pd.UInt32Dtype, pd.UInt64Dtype,
+                          pd.Float32Dtype, pd.Float64Dtype)):
         return "numeric"
-    if np.issubdtype(dtype, np.datetime64):
-        return "datetime"
-    if np.issubdtype(dtype, np.bool_):
+    if isinstance(dtype, pd.BooleanDtype):
         return "boolean"
+
+    # Now safe to use np.issubdtype for numpy-native dtypes
+    try:
+        if np.issubdtype(dtype, np.number):
+            return "numeric"
+        if np.issubdtype(dtype, np.datetime64):
+            return "datetime"
+        if np.issubdtype(dtype, np.bool_):
+            return "boolean"
+    except TypeError:
+        pass  # Non-numpy dtype we haven't handled — fall through to text
 
     # Heuristic: if few unique values relative to total, treat as categorical.
     # Guard against unhashable types (e.g., lists nested inside cells).
@@ -105,7 +123,6 @@ def _infer_dtype(series) -> str:
         if series.nunique() < min(20, max(len(series) * 0.05, 2)):
             return "categorical"
     except TypeError:
-        # Unhashable values (lists, dicts inside cells) -> treat as text
         return "text"
     return "text"
 
