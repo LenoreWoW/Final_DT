@@ -40,23 +40,23 @@ jobs:
         
     - name: Format check with Black
       run: |
-        black --check --diff dt_project/ tests/
+        black --check --diff backend/ tests/
         
     - name: Lint with flake8
       run: |
         # Stop the build if there are Python syntax errors or undefined names
-        flake8 dt_project/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 backend/ --count --select=E9,F63,F7,F82 --show-source --statistics
         # Exit-zero treats all errors as warnings
-        flake8 dt_project/ --count --exit-zero --max-complexity=15 --max-line-length=120 --statistics
+        flake8 backend/ --count --exit-zero --max-complexity=15 --max-line-length=120 --statistics
         
     - name: Type checking with mypy
       run: |
-        mypy dt_project/ --ignore-missing-imports --no-strict-optional
+        mypy backend/ --ignore-missing-imports --no-strict-optional
         
     - name: Security check with bandit
       run: |
-        bandit -r dt_project/ -f json -o bandit-report.json || true
-        bandit -r dt_project/ --severity-level medium
+        bandit -r backend/ -f json -o bandit-report.json || true
+        bandit -r backend/ --severity-level medium
         
     - name: Dependency safety check
       run: |
@@ -136,7 +136,7 @@ jobs:
         SECRET_KEY: test-secret-key-for-ci-cd
         FLASK_ENV: testing
       run: |
-        pytest tests/ -v --cov=dt_project --cov-report=xml --cov-report=html --cov-report=term-missing
+        pytest tests/ -v --cov=backend --cov-report=xml --cov-report=html --cov-report=term-missing
         
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3

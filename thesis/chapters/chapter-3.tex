@@ -788,6 +788,8 @@ The benchmark suite evaluates four metric categories: \textit{execution time} (w
 \label{subsec:statistical_validation}
 % -----------------------------------------------------------------------------
 
+Each of the six healthcare benchmarks is executed 30 times with different random seeds to establish distributional statistics. Because the quantum circuits are executed on the noiseless Aer statevector simulator, run-to-run variance arises exclusively from the randomized problem instances (different patient profiles, molecular libraries, population configurations) and stochastic classical optimizer trajectories (COBYLA initial points), rather than from quantum shot noise or hardware fluctuations. This low-variance regime produces very small standard deviations ($\sigma \approx 0.01$--$0.03$), which inflates Cohen's $d$ effect sizes (Section~\ref{subsec:cohens_d_inflation}) but does not compromise the validity of the paired $t$-test $p$-values or confidence intervals, which remain interpretable as measures of reliable performance differences between the quantum and classical approaches.
+
 Each benchmark is executed for 30 independent repetitions with different random seeds. Results are reported as mean $\pm$ standard deviation with paired $t$-tests ($p < 0.05$) and 95\% confidence intervals. Effect sizes are reported using Cohen's $d$:
 \begin{equation}
 d = \frac{\bar{x}_Q - \bar{x}_C}{s_p}, \quad \text{where } s_p = \sqrt{\frac{(n_Q - 1)s_Q^2 + (n_C - 1)s_C^2}{n_Q + n_C - 2}},

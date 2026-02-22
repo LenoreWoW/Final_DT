@@ -28,6 +28,7 @@ sys.path.insert(0, str(project_root))
 
 from backend.models.schemas import BenchmarkRequest, BenchmarkResult
 from backend.engine.quantum_modules import _generate_qasm
+from backend.engine.benchmark_runner import run_benchmark as run_benchmark_live
 
 router = APIRouter(prefix="/benchmark", tags=["benchmark"])
 
@@ -310,6 +311,7 @@ async def run_benchmark(
     # Compare if both ran
     if results["classical"] and results["quantum"]:
         results["comparison"] = {
+            "used_quantum": True,
             "speedup": (
                 results["classical"]["execution_time"] /
                 max(results["quantum"]["execution_time"], 0.001)
