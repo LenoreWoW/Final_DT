@@ -458,3 +458,103 @@ if __name__ == '__main__':
     print(f"\nResource Utilization:")
     for resource, util in results['resource_utilization'].items():
         print(f"  {resource}: {util:.1f}%")
+
+
+def run_integer_programming_baseline(
+    n_patients: int = 50,
+    n_beds: int = 20,
+    n_doctors: int = 10,
+    seed: int = 42,
+) -> Dict:
+    """
+    Integer programming baseline for hospital scheduling using scipy.optimize.linprog.
+
+    Formulates the patient-to-slot assignment as a linear program with
+    integrality constraints approximated through LP relaxation + rounding.
+    This is a proper QAOA counterpart (both solve combinatorial optimization).
+
+    Args:
+        n_patients: Number of patients to schedule.
+        n_beds: Number of available beds.
+        n_doctors: Number of available doctors.
+        seed: Random seed for reproducibility.
+
+    Returns:
+        Dictionary with scheduling results including objective value,
+        wait times, utilization, and solve time.
+    """
+    from scipy.optimize import linprog
+
+    start_time = time.time()
+    rng = np.random.RandomState(seed)
+
+    n_slots = n_beds  # one slot per bed
+    n_vars = n_patients * n_slots  # binary assignment variables x_{i,j}
+
+    # Cost vector: prefer earlier slots and respect priority
+    priorities = rng.choice([1, 2, 3, 4], size=n_patients, p=[0.4, 0.3, 0.2, 0.1])
+    c = np.zeros(n_vars)
+    for i in range(n_patients):
+        for j in range(n_slots):
+            # Higher priority patients get lower cost for earlier slots
+            c[i * n_slots + j] = (j + 1) / (priorities[i] + 1)
+
+    # Constraints: each patient assigned to at most one slot
+    A_eq_rows = []
+    b_eq = []
+    for i in range(n_patients):
+        row = np.zeros(n_vars)
+        row[i * n_slots: (i + 1) * n_slots] = 1.0
+        A_eq_rows.append(row)
+        b_eq.append(1.0)
+
+    # Constraints: each slot has at most one patient
+    A_ub_rows = []
+    b_ub = []
+    for j in range(n_slots):
+        row = np.zeros(n_vars)
+        for i in range(n_patients):
+            row[i * n_slots + j] = 1.0
+        A_ub_rows.append(row)
+        b_ub.append(1.0)
+
+    A_eq = np.array(A_eq_rows) if A_eq_rows else None
+    b_eq = np.array(b_eq) if b_eq else None
+    A_ub = np.array(A_ub_rows) if A_ub_rows else None
+    b_ub = np.array(b_ub) if b_ub else None
+
+    bounds = [(0, 1)] * n_vars
+
+    result = linprog(
+        c,
+        A_ub=A_ub,
+        b_ub=b_ub,
+        A_eq=A_eq,
+        b_eq=b_eq,
+        bounds=bounds,
+        method="highs",
+    )
+
+    elapsed = time.time() - start_time
+
+    # Round LP relaxation to integer solution
+    x = np.round(result.x).astype(int) if result.success else np.zeros(n_vars, dtype=int)
+    assignments = x.reshape(n_patients, n_slots)
+
+    # Compute metrics
+    assigned_slots = [np.argmax(assignments[i]) if np.any(assignments[i]) else -1 for i in range(n_patients)]
+    wait_times = [max(0, s) for s in assigned_slots if s >= 0]
+    avg_wait = float(np.mean(wait_times)) if wait_times else 0.0
+    utilization = float(np.sum(x)) / n_slots * 100 if n_slots > 0 else 0.0
+
+    return {
+        "method": "Integer Programming (LP relaxation + rounding)",
+        "optimization_time": elapsed,
+        "objective_value": float(result.fun) if result.success else float("inf"),
+        "n_patients": n_patients,
+        "n_slots": n_slots,
+        "patients_assigned": int(np.sum(np.any(assignments, axis=1))),
+        "average_wait_time": avg_wait,
+        "bed_utilization": min(utilization, 100.0),
+        "solver_status": result.message if result.success else "failed",
+    }

@@ -30,12 +30,50 @@ The QTwin platform is organized as a three-tier architecture comprising a presen
 
 \begin{figure}[htbp]
 \centering
-\fbox{\begin{minipage}{0.85\textwidth}
-\centering
-\vspace{2.5cm}
-{\small\textit{Three-tier system architecture: Frontend (Next.js) $\rightarrow$ API Layer (FastAPI) $\rightarrow$ Engine Layer (Universal Twin Generation Engine + Quantum Modules), with PostgreSQL and Redis data stores.}}
-\vspace{2.5cm}
-\end{minipage}}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  tier/.style={draw, rounded corners=4pt, minimum width=14cm, minimum height=2.8cm, font=\sffamily\bfseries, align=center},
+  subbox/.style={draw, rounded corners=2pt, minimum width=2.4cm, minimum height=0.7cm, font=\sffamily\footnotesize, align=center, fill=white},
+  sidedb/.style={draw, rounded corners=2pt, minimum width=2.2cm, minimum height=0.8cm, font=\sffamily\footnotesize, align=center},
+  tierarrow/.style={-{Stealth[length=3mm]}, thick, qtwindark},
+  dbarrow/.style={-{Stealth[length=2.5mm]}, thick, classicalgray},
+  wsarrow/.style={{Stealth[length=2.5mm]}-{Stealth[length=2.5mm]}, dashed, thick, qtwinred},
+]
+% --- Presentation Tier ---
+\node[tier, fill=qtwinblue!10, label={[font=\sffamily\bfseries]above:Presentation Tier (Next.js 14)}] (pres) at (0,6) {};
+\node[subbox] (landing) at (-4.5,6) {Landing Page};
+\node[subbox] (builder) at (-1.5,6) {Twin Builder};
+\node[subbox] (dash) at (1.5,6) {Dashboard};
+\node[subbox] (showcase) at (4.5,6) {Showcase};
+% --- API Tier ---
+\node[tier, fill=qtwinpurple!10, minimum width=14cm, label={[font=\sffamily\bfseries]above:API Tier (FastAPI)}] (api) at (0,3) {};
+\node[subbox] (auth) at (-5,3) {Auth};
+\node[subbox] (twins) at (-2.5,3) {Twins};
+\node[subbox] (bench) at (0,3) {Benchmark};
+\node[subbox] (data) at (2.5,3) {Data};
+\node[subbox] (conv) at (5,3) {Conversation};
+% --- Engine Tier ---
+\node[tier, fill=qtwingreen!10, minimum width=14cm, label={[font=\sffamily\bfseries]above:Engine Tier}] (eng) at (0,0) {};
+\node[subbox] (extractor) at (-4.5,0) {System Extractor};
+\node[subbox] (encoder) at (-1.5,0) {Quantum Encoder};
+\node[subbox] (orchestrator) at (1.8,0) {Algorithm Orchestrator};
+\node[subbox] (generator) at (5,0) {Twin Generator};
+% --- Side databases ---
+\node[sidedb, fill=qtwinorange!15] (pg) at (9.5,3.7) {PostgreSQL 15};
+\node[sidedb, fill=qtwinred!12] (redis) at (9.5,2.3) {Redis 7};
+% --- Bottom quantum ---
+\node[sidedb, fill=qtwinindigo!12, minimum width=3.5cm] (qiskit) at (0,-2) {Qiskit Aer + PennyLane};
+% --- Arrows between tiers ---
+\draw[tierarrow] (0,4.55) -- (0,4.45) node[midway, right, font=\sffamily\scriptsize] {REST/JSON};
+\draw[wsarrow] (-2,4.55) -- (-2,4.45) node[midway, left, font=\sffamily\scriptsize] {WebSocket};
+\draw[tierarrow] (0,1.55) -- (0,1.45);
+% --- Arrows to databases ---
+\draw[dbarrow] (7,3.7) -- (pg.west);
+\draw[dbarrow] (7,2.3) -- (redis.west);
+% --- Arrow to quantum ---
+\draw[tierarrow] (0,-1.05) -- (qiskit.north);
+\end{tikzpicture}%
+}
 \caption{Three-tier system architecture of the QTwin platform.}
 \label{fig:system-architecture}
 \end{figure}
@@ -51,7 +89,35 @@ The universal twin generation engine constitutes the core innovation of the QTwi
 
 \begin{figure}[htbp]
 \centering
-\fbox{\parbox{0.85\textwidth}{\centering\vspace{2.5cm}\textit{Universal Twin Generation Engine pipeline: NL Description $\rightarrow$ Problem Decomposition $\rightarrow$ Algorithm Selection $\rightarrow$ Parameter Encoding $\rightarrow$ Twin Composition $\rightarrow$ Interactive Digital Twin}\vspace{2.5cm}}}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  stagebox/.style={draw, minimum width=2.6cm, minimum height=1cm, font=\sffamily\footnotesize, align=center, thick},
+  rndbox/.style={stagebox, rounded corners=6pt},
+  arrw/.style={-{Stealth[length=3mm]}, thick, qtwindark},
+  annot/.style={font=\sffamily\scriptsize\itshape, text=qtwindark!70, align=center},
+]
+% --- Pipeline boxes ---
+\node[rndbox, fill=qtwingreen!20] (s1) at (0,0) {NL\\Description};
+\node[stagebox, fill=qtwinblue!15] (s2) at (3.3,0) {Problem\\Decomposition};
+\node[stagebox, fill=qtwinpurple!15] (s3) at (6.6,0) {Algorithm\\Selection};
+\node[stagebox, fill=qtwinindigo!15] (s4) at (9.9,0) {Parameter\\Encoding};
+\node[stagebox, fill=qtwincyan!15] (s5) at (13.2,0) {Twin\\Composition};
+\node[rndbox, fill=qtwinorange!20] (s6) at (16.5,0) {Interactive\\Digital Twin};
+% --- Arrows ---
+\draw[arrw] (s1) -- (s2);
+\draw[arrw] (s2) -- (s3);
+\draw[arrw] (s3) -- (s4);
+\draw[arrw] (s4) -- (s5);
+\draw[arrw] (s5) -- (s6);
+% --- Annotations ---
+\node[annot, below=4pt of s1] {User text input};
+\node[annot, below=4pt of s2] {Entities, relationships};
+\node[annot, below=4pt of s3] {QAOA / VQE / VQC / \ldots};
+\node[annot, below=4pt of s4] {Qubit mapping};
+\node[annot, below=4pt of s5] {OpenQASM circuits};
+\node[annot, below=4pt of s6] {Simulate, query, predict};
+\end{tikzpicture}%
+}
 \caption{The four-stage Universal Twin Generation Engine pipeline, from natural language input to interactive digital twin output.}
 \label{fig:twin_engine_pipeline}
 \end{figure}
@@ -182,7 +248,34 @@ The state machine supports backward transitions: additional entity information a
 
 \begin{figure}[htbp]
 \centering
-\fbox{\parbox{0.85\textwidth}{\centering\vspace{2.5cm}\textit{Conversation State Machine: GREETING $\rightarrow$ PROBLEM\_DESCRIPTION $\rightarrow$ CLARIFYING\_QUESTIONS $\rightarrow$ DATA\_REQUEST $\rightarrow$ CONFIRMATION $\rightarrow$ GENERATION. Backward transitions enabled for clarification and refinement. Twin status (DRAFT $\rightarrow$ ACTIVE) is managed separately.}\vspace{2.5cm}}}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  state/.style={draw, rounded corners=4pt, minimum width=2.8cm, minimum height=0.9cm, font=\sffamily\footnotesize\bfseries, align=center, thick},
+  terminal/.style={draw, double, rounded corners=4pt, minimum width=2.8cm, minimum height=0.9cm, font=\sffamily\footnotesize\bfseries, align=center, thick, fill=qtwingreen!20},
+  fwd/.style={-{Stealth[length=2.5mm]}, thick, qtwindark},
+  back/.style={-{Stealth[length=2.5mm]}, dashed, thick, qtwinred!70},
+  elabel/.style={font=\sffamily\tiny, fill=white, inner sep=1pt},
+]
+% --- States: zigzag layout ---
+\node[state, fill=qtwinblue!15] (greet) at (0,0) {GREETING};
+\node[state, fill=qtwinblue!20] (prob) at (4,0) {PROBLEM\\DESCRIPTION};
+\node[state, fill=qtwinpurple!15] (clar) at (8,0) {CLARIFYING\\QUESTIONS};
+\node[state, fill=qtwinpurple!20] (datareq) at (12,0) {DATA\\REQUEST};
+\node[state, fill=qtwinpurple!22] (conf) at (16,0) {CONFIRMATION};
+\node[state, fill=qtwinpurple!25] (gen) at (20,0) {GENERATION};
+\node[terminal] (active) at (24,0) {ACTIVE\\TWIN};
+% --- Forward arrows ---
+\draw[fwd] (greet) -- (prob) node[elabel, midway, above] {domain detected};
+\draw[fwd] (prob) -- (clar) node[elabel, midway, above] {entities found};
+\draw[fwd] (clar) -- (datareq) node[elabel, midway, above] {goals identified};
+\draw[fwd] (datareq) -- (conf) node[elabel, midway, above] {data discussed};
+\draw[fwd] (conf) -- (gen) node[elabel, midway, above] {user confirms};
+\draw[fwd] (gen) -- (active) node[elabel, midway, above] {threshold met};
+% --- Backward arrows ---
+\draw[back] (clar.south) .. controls (6,-1.3) and (5.5,-1.3) .. (prob.south) node[elabel, midway, below] {new entities};
+\draw[back] (conf.south) .. controls (13,-1.3) and (10,-1.3) .. (clar.south east) node[elabel, midway, below] {refine};
+\end{tikzpicture}%
+}
 \caption{Conversation state machine governing information gathering from initial greeting through twin generation. The twin lifecycle status (DRAFT to ACTIVE) is managed by a separate enumeration.}
 \label{fig:state_machine}
 \end{figure}
@@ -241,12 +334,51 @@ Algorithm selection maps each problem specification onto quantum algorithms from
 
 \begin{figure}[htbp]
 \centering
-\fbox{\begin{minipage}{0.85\textwidth}
-\centering
-\vspace{2.5cm}
-{\small\textit{Problem type taxonomy and quantum algorithm mapping: Optimization $\rightarrow$ QAOA, Classification $\rightarrow$ VQC, Simulation $\rightarrow$ Quantum Simulation, Correlation $\rightarrow$ TTN, Anomaly Detection $\rightarrow$ Quantum Autoencoder.}}
-\vspace{2.5cm}
-\end{minipage}}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  lbox/.style={draw, rounded corners=4pt, minimum width=3.8cm, minimum height=0.7cm, font=\sffamily\footnotesize, align=center, fill=qtwinblue!15, thick},
+  rbox/.style={draw, rounded corners=4pt, minimum width=3.2cm, minimum height=0.7cm, font=\sffamily\footnotesize, align=center, fill=qtwinpurple!15, thick},
+  primary/.style={-{Stealth[length=2.5mm]}, thick, qtwindark},
+  secondary/.style={-{Stealth[length=2.5mm]}, dashed, thick, classicalgray},
+  fwlabel/.style={font=\sffamily\tiny\itshape, text=qtwindark!60},
+]
+% --- Left column (problem types) ---
+\node[lbox] (opt) at (0, 0)   {Combinatorial Optimization};
+\node[lbox] (cls) at (0,-1.2) {Classification};
+\node[lbox] (mol) at (0,-2.4) {Molecular Simulation};
+\node[lbox] (cor) at (0,-3.6) {Correlation Analysis};
+\node[lbox] (ano) at (0,-4.8) {Anomaly Detection};
+\node[lbox] (cmp) at (0,-6.0) {Complex Modeling};
+\node[lbox] (pop) at (0,-7.2) {Population Dynamics};
+% --- Right column (algorithms) ---
+\node[rbox] (qaoa) at (8, 0)   {QAOA};
+\node[rbox] (vqc)  at (8,-1.2) {VQC};
+\node[rbox] (vqe)  at (8,-2.4) {VQE};
+\node[rbox] (ttn)  at (8,-3.6) {Tree Tensor Network};
+\node[rbox] (qae)  at (8,-4.8) {Quantum Autoencoder};
+\node[rbox] (nqdt) at (8,-6.0) {Neural Quantum DT};
+\node[rbox] (qsim) at (8,-7.2) {Quantum Simulation};
+% --- Framework labels ---
+\node[fwlabel, below=1pt of qaoa] {(Qiskit)};
+\node[fwlabel, below=1pt of vqc]  {(PennyLane)};
+\node[fwlabel, below=1pt of vqe]  {(Qiskit)};
+\node[fwlabel, below=1pt of ttn]  {(PennyLane)};
+\node[fwlabel, below=1pt of qae]  {(PennyLane)};
+\node[fwlabel, below=1pt of nqdt] {(PennyLane)};
+\node[fwlabel, below=1pt of qsim] {(Qiskit)};
+% --- Primary mappings ---
+\draw[primary] (opt.east) -- (qaoa.west);
+\draw[primary] (cls.east) -- (vqc.west);
+\draw[primary] (mol.east) -- (vqe.west);
+\draw[primary] (cor.east) -- (ttn.west);
+\draw[primary] (ano.east) -- (qae.west);
+\draw[primary] (cmp.east) -- (nqdt.west);
+\draw[primary] (pop.east) -- (qsim.west);
+% --- Secondary mappings ---
+\draw[secondary] (opt.east) -- (vqe.west);
+\draw[secondary] (cls.east) -- (nqdt.west);
+\end{tikzpicture}%
+}
 \caption{Problem type taxonomy and quantum algorithm mapping.}
 \label{fig:algorithm-mapping}
 \end{figure}
@@ -327,12 +459,45 @@ estimated from measurement outcomes and minimized using a classical optimizer. F
 
 \begin{figure}[htbp]
 \centering
-\fbox{\begin{minipage}{0.85\textwidth}
-\centering
-\vspace{2.5cm}
-{\small\textit{QAOA circuit structure for p=2 layers: initial Hadamard layer, alternating problem unitary $U_P(\gamma)$ and mixer unitary $U_M(\beta)$ layers, final measurement.}}
-\vspace{2.5cm}
-\end{minipage}}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  gate/.style={draw, fill=white, minimum width=0.6cm, minimum height=0.6cm, font=\footnotesize, align=center, thick},
+  biggate/.style={draw, rounded corners=2pt, minimum width=1.2cm, font=\footnotesize, align=center, thick},
+  meter/.style={draw, fill=white, minimum width=0.6cm, minimum height=0.6cm, font=\footnotesize, thick},
+  wire/.style={thick},
+  brace/.style={decorate, decoration={brace, amplitude=5pt, raise=3pt}, thick},
+]
+% --- Qubit wires ---
+\foreach \i in {0,...,3} {
+  \draw[wire] (-0.5, -\i*1.0) -- (14.5, -\i*1.0);
+  \node[font=\footnotesize, anchor=east] at (-0.7, -\i*1.0) {$|0\rangle$};
+}
+% --- Hadamard gates ---
+\foreach \i in {0,...,3} {
+  \node[gate] at (0.5, -\i*1.0) {$H$};
+}
+% --- QAOA Layer 1 ---
+\node[biggate, fill=qtwinblue!20, minimum height=3.6cm] (up1) at (2.8, -1.5) {$U_P(\gamma_1)$};
+\node[biggate, fill=qtwinpurple!20, minimum height=3.6cm] (um1) at (4.6, -1.5) {$U_M(\beta_1)$};
+% --- QAOA Layer 2 ---
+\node[biggate, fill=qtwinblue!20, minimum height=3.6cm] (up2) at (7.0, -1.5) {$U_P(\gamma_2)$};
+\node[biggate, fill=qtwinpurple!20, minimum height=3.6cm] (um2) at (8.8, -1.5) {$U_M(\beta_2)$};
+% --- Braces for layers ---
+\draw[brace] (2.1, 0.55) -- (5.3, 0.55) node[midway, above=8pt, font=\footnotesize] {Layer 1 ($p{=}1$)};
+\draw[brace] (6.3, 0.55) -- (9.5, 0.55) node[midway, above=8pt, font=\footnotesize] {Layer 2 ($p{=}2$)};
+% --- Measurement ---
+\foreach \i in {0,...,3} {
+  \node[meter] (m\i) at (11.5, -\i*1.0) {$M$};
+  % meter decoration: small arc
+  \draw[thick] (11.25, -\i*1.0+0.15) arc[start angle=180, end angle=0, radius=0.25];
+  \draw[thick, -{Stealth[length=1.5mm]}] (11.5, -\i*1.0+0.15) -- (11.65, -\i*1.0+0.35);
+}
+% --- Classical output lines ---
+\foreach \i in {0,...,3} {
+  \draw[thick, double] (11.8, -\i*1.0) -- (12.5, -\i*1.0);
+}
+\end{tikzpicture}%
+}
 \caption{QAOA circuit structure for $p=2$ layers.}
 \label{fig:qaoa-circuit}
 \end{figure}
@@ -348,12 +513,98 @@ The Variational Quantum Classifier (VQC)~\cite{schuld2020circuit, cerezo2021vari
 
 \begin{figure}[htbp]
 \centering
-\fbox{\begin{minipage}{0.85\textwidth}
-\centering
-\vspace{2.5cm}
-{\small\textit{VQC circuit structure: angle encoding feature map, variational ansatz with entangling layers, measurement for classification.}}
-\vspace{2.5cm}
-\end{minipage}}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  gate/.style={draw, fill=white, minimum width=0.7cm, minimum height=0.55cm, font=\scriptsize, align=center, thick},
+  ggreen/.style={gate, fill=qtwingreen!20},
+  gpurple/.style={gate, fill=qtwinpurple!20},
+  meter/.style={draw, fill=white, minimum width=0.6cm, minimum height=0.6cm, font=\footnotesize, thick},
+  wire/.style={thick},
+  brace/.style={decorate, decoration={brace, amplitude=5pt, raise=3pt}, thick},
+  cnottgt/.style={draw, circle, inner sep=0pt, minimum size=6pt, thick, fill=white},
+  cnotctrl/.style={fill=qtwindark, circle, inner sep=0pt, minimum size=3pt},
+]
+% --- Qubit wires ---
+\foreach \i in {0,...,3} {
+  \draw[wire] (-0.5, -\i*1.1) -- (20, -\i*1.1);
+  \node[font=\footnotesize, anchor=east] at (-0.7, -\i*1.1) {$|0\rangle$};
+}
+% --- Feature Map (encoding) ---
+\node[ggreen] at (0.8, 0)    {$R_Y(x_1)$};
+\node[ggreen] at (0.8, -1.1) {$R_Y(x_2)$};
+\node[ggreen] at (0.8, -2.2) {$R_Y(x_3)$};
+\node[ggreen] at (0.8, -3.3) {$R_Y(x_4)$};
+% --- Ansatz Layer 1: rotations ---
+\node[gpurple] at (3.0, 0)    {$R_Y$};
+\node[gpurple] at (3.8, 0)    {$R_Z$};
+\node[gpurple] at (3.0, -1.1) {$R_Y$};
+\node[gpurple] at (3.8, -1.1) {$R_Z$};
+\node[gpurple] at (3.0, -2.2) {$R_Y$};
+\node[gpurple] at (3.8, -2.2) {$R_Z$};
+\node[gpurple] at (3.0, -3.3) {$R_Y$};
+\node[gpurple] at (3.8, -3.3) {$R_Z$};
+% --- Ansatz Layer 1: CNOTs ---
+% CNOT 0->1
+\node[cnotctrl] at (5.0, 0) {};
+\draw[thick] (5.0, 0) -- (5.0, -1.1);
+\node[cnottgt] at (5.0, -1.1) {};
+\draw[thick] (4.94, -1.1) -- (5.06, -1.1);
+\draw[thick] (5.0, -1.16) -- (5.0, -1.04);
+% CNOT 1->2
+\node[cnotctrl] at (5.6, -1.1) {};
+\draw[thick] (5.6, -1.1) -- (5.6, -2.2);
+\node[cnottgt] at (5.6, -2.2) {};
+\draw[thick] (5.54, -2.2) -- (5.66, -2.2);
+\draw[thick] (5.6, -2.26) -- (5.6, -2.14);
+% CNOT 2->3
+\node[cnotctrl] at (6.2, -2.2) {};
+\draw[thick] (6.2, -2.2) -- (6.2, -3.3);
+\node[cnottgt] at (6.2, -3.3) {};
+\draw[thick] (6.14, -3.3) -- (6.26, -3.3);
+\draw[thick] (6.2, -3.36) -- (6.2, -3.24);
+% --- Ansatz Layer 2: rotations ---
+\node[gpurple] at (8.0, 0)    {$R_Y$};
+\node[gpurple] at (8.8, 0)    {$R_Z$};
+\node[gpurple] at (8.0, -1.1) {$R_Y$};
+\node[gpurple] at (8.8, -1.1) {$R_Z$};
+\node[gpurple] at (8.0, -2.2) {$R_Y$};
+\node[gpurple] at (8.8, -2.2) {$R_Z$};
+\node[gpurple] at (8.0, -3.3) {$R_Y$};
+\node[gpurple] at (8.8, -3.3) {$R_Z$};
+% --- Ansatz Layer 2: CNOTs ---
+% CNOT 0->1
+\node[cnotctrl] at (10.0, 0) {};
+\draw[thick] (10.0, 0) -- (10.0, -1.1);
+\node[cnottgt] at (10.0, -1.1) {};
+\draw[thick] (9.94, -1.1) -- (10.06, -1.1);
+\draw[thick] (10.0, -1.16) -- (10.0, -1.04);
+% CNOT 1->2
+\node[cnotctrl] at (10.6, -1.1) {};
+\draw[thick] (10.6, -1.1) -- (10.6, -2.2);
+\node[cnottgt] at (10.6, -2.2) {};
+\draw[thick] (10.54, -2.2) -- (10.66, -2.2);
+\draw[thick] (10.6, -2.26) -- (10.6, -2.14);
+% CNOT 2->3
+\node[cnotctrl] at (11.2, -2.2) {};
+\draw[thick] (11.2, -2.2) -- (11.2, -3.3);
+\node[cnottgt] at (11.2, -3.3) {};
+\draw[thick] (11.14, -3.3) -- (11.26, -3.3);
+\draw[thick] (11.2, -3.36) -- (11.2, -3.24);
+% --- Braces ---
+\draw[brace] (0.3, 0.55) -- (1.3, 0.55) node[midway, above=8pt, font=\footnotesize] {Feature Map};
+\draw[brace] (2.5, 0.55) -- (6.7, 0.55) node[midway, above=8pt, font=\footnotesize] {Ansatz Layer 1};
+\draw[brace] (7.5, 0.55) -- (11.7, 0.55) node[midway, above=8pt, font=\footnotesize] {Ansatz Layer 2};
+% --- Measurement ---
+\foreach \i in {0,...,3} {
+  \node[meter] (m\i) at (13.0, -\i*1.1) {$M$};
+  \draw[thick] (12.75, -\i*1.1+0.15) arc[start angle=180, end angle=0, radius=0.25];
+  \draw[thick, -{Stealth[length=1.5mm]}] (13.0, -\i*1.1+0.15) -- (13.15, -\i*1.1+0.35);
+}
+\foreach \i in {0,...,3} {
+  \draw[thick, double] (13.3, -\i*1.1) -- (14.0, -\i*1.1);
+}
+\end{tikzpicture}%
+}
 \caption{VQC circuit structure with angle encoding and variational ansatz.}
 \label{fig:vqc-circuit}
 \end{figure}
@@ -493,12 +744,34 @@ All quantum computations are executed on the Qiskit Aer simulator~\cite{aleksand
 
 \begin{figure}[htbp]
 \centering
-\fbox{\begin{minipage}{0.85\textwidth}
-\centering
-\vspace{2.5cm}
-{\small\textit{Benchmark methodology: identical input data fed to both classical baseline and quantum module, results compared on time, accuracy, and scale metrics with statistical validation.}}
-\vspace{2.5cm}
-\end{minipage}}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners=3pt, minimum width=3.2cm, minimum height=0.9cm, font=\sffamily\footnotesize, align=center, thick},
+  smallbox/.style={draw, rounded corners=2pt, minimum width=3cm, minimum height=1.2cm, font=\sffamily\scriptsize, align=left, thick},
+  arrw/.style={-{Stealth[length=2.5mm]}, thick, qtwindark},
+]
+% --- Input ---
+\node[box, fill=qtwindark!10] (input) at (0, 0) {Input Data};
+% --- Two paths ---
+\node[box, fill=classicalgray!20] (classical) at (-3.5, -1.8) {Classical Baseline};
+\node[box, fill=qtwinblue!20] (quantum) at (3.5, -1.8) {Quantum Module};
+% --- Results ---
+\node[smallbox, fill=classicalgray!10] (cresult) at (-3.5, -3.8) {Classical Result\\[2pt]\textsf{Time, Accuracy, Scale}};
+\node[smallbox, fill=qtwinblue!10] (qresult) at (3.5, -3.8) {Quantum Result\\[2pt]\textsf{Time, Accuracy, Scale}};
+% --- Comparison ---
+\node[box, fill=qtwinpurple!15, minimum width=4cm] (compare) at (0, -5.8) {Statistical Comparison};
+% --- Validation ---
+\node[box, fill=qtwingreen!12, minimum width=5.5cm, minimum height=1.2cm] (valid) at (0, -7.8) {Validation Output\\[2pt]\textsf{$p$-value $<$ 0.05,\; Cohen's $d$,\; 95\% CI,\; $n=30$ runs}};
+% --- Arrows ---
+\draw[arrw] (input.south) -- ++(0,-0.3) -| (classical.north);
+\draw[arrw] (input.south) -- ++(0,-0.3) -| (quantum.north);
+\draw[arrw] (classical) -- (cresult);
+\draw[arrw] (quantum) -- (qresult);
+\draw[arrw] (cresult.south) -- ++(0,-0.4) -| (compare.north west);
+\draw[arrw] (qresult.south) -- ++(0,-0.4) -| (compare.north east);
+\draw[arrw] (compare) -- (valid);
+\end{tikzpicture}%
+}
 \caption{Benchmark methodology for quantum versus classical comparison.}
 \label{fig:benchmark-methodology}
 \end{figure}
@@ -515,7 +788,7 @@ The benchmark suite evaluates four metric categories: \textit{execution time} (w
 \label{subsec:statistical_validation}
 % -----------------------------------------------------------------------------
 
-Each benchmark is executed for 10 independent repetitions with different random seeds. Results are reported as mean $\pm$ standard deviation with paired $t$-tests ($p < 0.05$) and 95\% confidence intervals. Effect sizes are reported using Cohen's $d$:
+Each benchmark is executed for 30 independent repetitions with different random seeds. Results are reported as mean $\pm$ standard deviation with paired $t$-tests ($p < 0.05$) and 95\% confidence intervals. Effect sizes are reported using Cohen's $d$:
 \begin{equation}
 d = \frac{\bar{x}_Q - \bar{x}_C}{s_p}, \quad \text{where } s_p = \sqrt{\frac{(n_Q - 1)s_Q^2 + (n_C - 1)s_C^2}{n_Q + n_C - 2}},
 \label{eq:cohens_d}
@@ -535,6 +808,11 @@ Fair comparison is ensured through input data equivalence, problem size equivale
 % -----------------------------------------------------------------------------
 
 All circuits are exported in OpenQASM~\cite{cross2017openqasm, cross2022openqasm3} with optimized parameters and metadata. Fixed random seeds ensure bitwise reproducibility~\cite{aleksandrowicz2019qiskit}.
+
+\subsection{Simulator-Based Evaluation: Scope and Caveats}
+\label{subsec:simulator_scope}
+
+All quantum computations in this thesis are executed on the Qiskit Aer \texttt{statevector\_simulator}, which computes the exact quantum state evolution through classical matrix multiplication of $2^n \times 2^n$ unitary matrices~\cite{aleksandrowicz2019qiskit}. This execution model has two important implications for interpreting benchmark results. First, the ``quantum'' computation is performed entirely on classical hardware; the statevector simulator does not exploit quantum mechanical phenomena but rather emulates them through exponentially scaling classical linear algebra. Consequently, wall-clock execution times reflect the classical cost of simulating the quantum algorithm, not the execution time that would be observed on a physical quantum processor. Second, the simulation is noise-free: gate operations are applied as exact unitary transformations without the decoherence, gate errors, or measurement noise present on real NISQ devices~\cite{preskill2018quantum}. The benchmarks therefore measure \emph{algorithmic advantage}---whether the quantum circuit design produces superior solutions compared to traditional classical algorithms given equivalent problem inputs---rather than \emph{hardware quantum advantage}. Cerezo et al.\ further note that classical simulability of certain variational circuits challenges the assumption that simulator-based results transfer to genuine quantum advantage~\cite{cerezo2025simulability}. The reported improvements should be interpreted as upper bounds on hardware-achievable performance, with the magnitude of degradation on physical processors remaining an open empirical question addressable through the framework's OpenQASM export capability~\cite{cross2022openqasm3}.
 
 % =============================================================================
 \section{Evaluation Framework}

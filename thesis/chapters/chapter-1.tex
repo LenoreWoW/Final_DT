@@ -24,12 +24,53 @@ The convergence of digital twin technology and quantum computing represents a la
 
 \begin{figure}[htbp]
 \centering
-\fbox{\begin{minipage}{0.85\textwidth}
-\centering
-\vspace{3cm}
-{\small\textit{[Figure description: High-level overview of the QTwin platform showing the two pillars: Universal Twin Builder (left) and Quantum Advantage Showcase (right), connected by the shared quantum algorithm layer.]}}
-\vspace{3cm}
-\end{minipage}}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    pillar/.style={rounded corners=6pt, draw=#1!60, fill=#1!8, line width=1pt,
+                   minimum width=5.8cm, text width=5.4cm, align=center, inner sep=8pt},
+    subitem/.style={font=\small, text=black!80},
+    shared/.style={rounded corners=6pt, draw=qtwinpurple!70, fill=qtwinpurple!12,
+                   line width=1.2pt, minimum height=1.2cm, align=center, inner sep=6pt},
+    qmod/.style={rounded corners=4pt, draw=qtwindark!40, fill=qtwindark!6,
+                 line width=0.8pt, minimum height=1cm, align=center, inner sep=6pt},
+    arrow/.style={-{Stealth[length=5pt]}, line width=1pt, color=black!50}
+]
+% Left pillar
+\node[pillar=qtwinblue] (left) at (-3.6,3.5) {%
+    \textbf{\normalsize Universal Twin Builder}\\[6pt]
+    \begin{tabular}{@{}l@{}}
+    \subitem{$\bullet$ Natural Language Input}\\
+    \subitem{$\bullet$ Conversational AI (spaCy)}\\
+    \subitem{$\bullet$ Domain-Agnostic Extraction}\\
+    \subitem{$\bullet$ Automatic Twin Generation}
+    \end{tabular}
+};
+% Right pillar
+\node[pillar=qtwincyan] (right) at (3.6,3.5) {%
+    \textbf{\normalsize Quantum Advantage Showcase}\\[6pt]
+    \begin{tabular}{@{}l@{}}
+    \subitem{$\bullet$ 6 Healthcare Modules}\\
+    \subitem{$\bullet$ Classical Baselines}\\
+    \subitem{$\bullet$ Statistical Validation}\\
+    \subitem{$\bullet$ OpenQASM Export}
+    \end{tabular}
+};
+% Shared layer
+\node[shared, minimum width=13cm] (shared) at (0,0.6) {%
+    \textbf{\normalsize Shared Quantum Algorithm Layer}\\[2pt]
+    {\small Dynamic selection \& composition based on problem type}
+};
+% Quantum modules
+\node[qmod, minimum width=13cm] (qmod) at (0,-1.2) {%
+    \textbf{\small Quantum Modules}\\[2pt]
+    {\small QAOA\;\;$\cdot$\;\;VQE\;\;$\cdot$\;\;VQC\;\;$\cdot$\;\;TTN\;\;$\cdot$\;\;QNN\;\;$\cdot$\;\;Quantum Simulation\;\;$\cdot$\;\;Quantum Sensing}
+};
+% Arrows
+\draw[arrow] (left.south) -- (shared.north -| left.south);
+\draw[arrow] (right.south) -- (shared.north -| right.south);
+\draw[arrow] (shared.south) -- (qmod.north);
+\end{tikzpicture}%
+}
 \caption{High-level overview of the QTwin platform showing the Universal Twin Builder and Quantum Advantage Showcase pillars.}
 \label{fig:platform-overview}
 \end{figure}
@@ -85,7 +126,7 @@ The research questions are operationalized through five concrete objectives, eac
 
 \item \textbf{Develop a conversational AI interface for system description extraction.} Create a multi-turn conversational pipeline using spaCy~\cite{honnibal2020spacy} with domain-adaptive pattern matching that translates unstructured natural language dialogue into structured twin specifications. The conversational state machine manages the twin lifecycle, transitioning twins from a draft state to an active state when sufficient information has been gathered. This objective addresses RQ1 and contributes to RQ4.
 
-\item \textbf{Create a domain-agnostic quantum algorithm composition engine.} Build a library of seven quantum module types---QAOA~\cite{farhi2014qaoa}, variational quantum classifiers, quantum SVMs~\cite{havlicek2019supervised}, quantum sensing, neural quantum digital twin networks, tree tensor networks, and quantum autoencoders---with automated selection and configuration based on extracted system descriptions and OpenQASM export~\cite{cross2017openqasm, cross2022openqasm3} for transparency and reproducibility. This objective addresses RQ2 and enables the benchmarking required by RQ3.
+\item \textbf{Create a domain-agnostic quantum algorithm composition engine.} Build a library of seven quantum module types---QAOA~\cite{farhi2014qaoa}, variational quantum classifiers, quantum simulation (VQE)~\cite{peruzzo2014vqe}, quantum sensing, neural quantum digital twin networks, tree tensor networks, and quantum autoencoders---with automated selection and configuration based on extracted system descriptions and OpenQASM export~\cite{cross2017openqasm, cross2022openqasm3} for transparency and reproducibility. This objective addresses RQ2 and enables the benchmarking required by RQ3.
 
 \item \textbf{Validate quantum advantage through rigorous healthcare benchmarks.} Conduct controlled comparisons between quantum and classical approaches across six healthcare sub-domains---drug discovery, medical imaging, epidemic simulation, clinical trial optimization, hospital resource management, and genomic analysis---using standardized datasets, evaluation metrics, and statistical procedures~\cite{corral2020digital, bjornsson2020digital}. Healthcare is selected due to the diversity of its computational challenges and the societal significance of improvements in healthcare delivery. This objective addresses RQ3 and provides the depth validation component of RQ4.
 
@@ -106,8 +147,8 @@ The primary contribution is the QTwin framework: an integrated platform that com
 \paragraph{Contribution 2: Conversational Quantum Twin Generation---First Natural Language to Quantum Twin Pipeline.}
 The second contribution is a conversational pipeline that translates natural language system descriptions into quantum-powered digital twins. The pipeline integrates multi-turn dialogue management, NLP-based entity extraction using spaCy~\cite{honnibal2020spacy} with domain-adaptive pattern matching, automated quantum module selection, and OpenQASM circuit generation into a seamless conversational experience. The significance of this contribution lies in its effect on accessibility: it reduces the expertise required to create a quantum digital twin from the intersection of domain knowledge, software engineering, and quantum physics to domain knowledge alone. The twin lifecycle management system transitions twins from draft to active states based on conversational progress, ensuring that generated twins meet minimum completeness criteria before activation.
 
-\paragraph{Contribution 3: Validated Quantum Advantage Across Six Healthcare Sub-Domains.}
-The third contribution is the empirical demonstration of quantum advantage in digital twin applications through comprehensive benchmarking across six healthcare sub-domains. Key results include approximately 1,000$\times$ speedup in drug discovery virtual compound screening compared to classical docking simulations, $+13\%$ improvement in medical imaging diagnostic classification accuracy over classical convolutional approaches, approximately 720$\times$ speedup in epidemic simulation over classical agent-based models, and 73\% reduction in simulated patient wait times via QAOA-based scheduling optimization. These results constitute the most comprehensive empirical evaluation of quantum advantage in healthcare digital twin applications reported to date. The benchmarking methodology is fully documented to enable independent replication.
+\paragraph{Contribution 3: Demonstrated Statistically Significant Algorithmic Improvement Under Simulation Across Six Healthcare Sub-Domains.}
+The third contribution is the empirical demonstration of quantum advantage in digital twin applications through comprehensive benchmarking across six healthcare sub-domains. Key results include approximately 1,000$\times$ speedup in drug discovery virtual compound screening compared to classical docking simulations, $+13\%$ improvement in medical imaging diagnostic classification accuracy over classical convolutional approaches, approximately 720$\times$ speedup in epidemic simulation over classical agent-based models, and 73\% reduction in simulated patient wait times via QAOA-based scheduling optimization. These results constitute the most comprehensive empirical evaluation of quantum algorithmic advantage in healthcare digital twin applications reported to date. Because all benchmarks were executed on the Qiskit Aer noiseless simulator, the reported improvements reflect the superiority of quantum-inspired algorithmic designs over their classical counterparts rather than hardware-level quantum speedup; the magnitudes represent upper bounds that would be moderated by gate errors and decoherence on physical processors~\cite{preskill2018quantum}. The benchmarking methodology is fully documented to enable independent replication.
 
 \paragraph{Contribution 4: Dynamic Quantum Algorithm Selection and Composition Methodology.}
 The fourth contribution is a methodology for dynamically selecting and composing quantum algorithms based on conversationally extracted system descriptions. The composition engine maps extracted entities and objectives onto quantum module configurations using a rule-based approach that considers the computational nature of the task (optimization, classification, simulation, dimensionality reduction) rather than domain-specific semantics~\cite{cerezo2021variational}. This abstraction enables the same quantum modules to serve healthcare optimization, military logistics planning, sports performance prediction, and environmental process simulation without modification, offering a practical approach to quantum algorithm reuse across application domains.
@@ -121,6 +162,8 @@ The fifth contribution is comprehensive OpenQASM export for every quantum comput
 % =============================================================================
 
 \paragraph{Scope.} The QTwin framework operates entirely within a simulation-based quantum computing environment using the Qiskit Aer simulator~\cite{aleksandrowicz2019qiskit}. This design choice reflects current hardware constraints: limited qubit counts, high error rates, and queue-based access models make cloud-accessible quantum processors unsuitable as the primary execution backend for an interactive digital twin platform that must deliver results within conversational timescales~\cite{preskill2018quantum}. The simulator provides ideal (noise-free) quantum computation, enabling demonstration of algorithmic advantages without the confounding effects of hardware noise. Healthcare is designated as the primary validation domain, with six sub-domains providing comprehensive evaluation across diverse computational task types. Three additional domains---military operational planning, sports performance analytics, and environmental monitoring---serve as secondary validation contexts for cross-domain generalization assessment. The system architecture follows a microservices-oriented design with a FastAPI backend, Next.js frontend, PostgreSQL database with SQLite fallback, and Redis caching layer, containerized via Docker for reproducible deployment.
+
+\paragraph{Terminology Note: Simulator-Based vs.\ Hardware Quantum Advantage.} Throughout this thesis, ``quantum advantage'' refers to the statistically significant outperformance of quantum-algorithm-based approaches over classical baselines, as measured on the Qiskit Aer statevector simulator. Because the simulator performs quantum circuit execution through classical matrix multiplication, these results demonstrate \emph{algorithmic advantage}---that quantum circuit designs encode problem structure more effectively than traditional classical approaches---rather than \emph{hardware quantum advantage}, which would require execution on physical quantum processors exhibiting genuine quantum mechanical effects. The distinction is critical: algorithmic advantage establishes that the quantum computational paradigm produces superior solutions, but the wall-clock speedups reported in Chapter~\ref{ch:results} reflect classical simulation cost rather than projected quantum hardware execution time.
 
 \paragraph{Limitations.} Several limitations constrain the generalizability of the results. First, simulation-based execution means that reported quantum advantages reflect algorithmic potential rather than realized performance on physical quantum processors; NISQ noise, decoherence, and gate errors could degrade performance relative to simulation-based results~\cite{preskill2018quantum}. The framework's OpenQASM export capability facilitates future hardware execution, but such execution is beyond this thesis's scope. Second, the rule-based NLP extraction pipeline relies on pattern matching augmented with spaCy's statistical models~\cite{honnibal2020spacy} rather than large language model-based extraction; while this provides deterministic, interpretable behavior, its accuracy is bounded by pattern coverage, particularly for domains with specialized terminology. Third, quantum circuit simulation requires $O(2^n)$ classical memory~\cite{nielsen2010quantum}, limiting benchmarks to approximately 20--30 qubits and constraining the problem sizes evaluated.
 

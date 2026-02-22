@@ -384,3 +384,65 @@ def run_classical_baseline(patient_data: Dict[str, Any]) -> Dict[str, Any]:
         "convergence": result.convergence_history[-5:] if result.convergence_history else [],
     }
 
+
+def run_simulated_annealing_baseline(
+    patient_data: Dict[str, Any] = None,
+    n_treatments: int = 12,
+    seed: int = 42,
+) -> Dict[str, Any]:
+    """
+    Simulated annealing baseline for treatment optimization.
+
+    Uses scipy.optimize.dual_annealing for global optimization.
+    This is a second classical optimization comparison for QAOA,
+    complementing the genetic algorithm baseline.
+
+    Args:
+        patient_data: Patient information dictionary.
+        n_treatments: Number of candidate treatments.
+        seed: Random seed for reproducibility.
+
+    Returns:
+        Dictionary with optimization results.
+    """
+    from scipy.optimize import dual_annealing
+
+    patient_data = patient_data or {}
+    start_time = time.time()
+    rng = np.random.RandomState(seed)
+
+    # Treatment efficacy landscape (synthetic)
+    efficacy_weights = rng.rand(n_treatments)
+    interaction_matrix = rng.rand(n_treatments, n_treatments) * 0.2
+    interaction_matrix = (interaction_matrix + interaction_matrix.T) / 2
+
+    def objective(x):
+        """Negative efficacy (we minimize)."""
+        # x is continuous [0, 1] for each treatment; round to binary
+        binary = (x > 0.5).astype(float)
+        efficacy = np.dot(efficacy_weights, binary)
+        interactions = binary @ interaction_matrix @ binary
+        return -(efficacy + 0.5 * interactions)
+
+    bounds = [(0, 1)] * n_treatments
+
+    result = dual_annealing(
+        objective,
+        bounds=bounds,
+        seed=seed,
+        maxiter=200,
+    )
+
+    elapsed = time.time() - start_time
+    best_binary = (result.x > 0.5).astype(int)
+
+    return {
+        "method": "simulated_annealing",
+        "best_efficacy": float(-result.fun),
+        "selected_treatments": int(np.sum(best_binary)),
+        "treatment_vector": best_binary.tolist(),
+        "execution_time_seconds": elapsed,
+        "n_function_evaluations": int(result.nfev),
+        "converged": bool(result.success),
+    }
+

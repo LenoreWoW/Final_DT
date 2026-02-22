@@ -56,7 +56,7 @@ The cross-domain evaluation confirms an affirmative answer. The universal twin g
 
 \textit{Does quantum computation provide measurable advantage over classical approaches in digital twin applications?}
 
-The healthcare benchmark evaluation provides comprehensive evidence of statistically significant quantum advantage across all six sub-domains, spanning four distinct computational problem types: combinatorial optimization, classification, simulation, and correlation analysis. All six paired $t$-tests (10 runs each) yielded $p < 0.001$, with Cohen's $d$ values ranging from 8.50 to 26.07---far exceeding the 0.8 threshold for a large effect. The breadth and consistency of these results across six independent modules, each using different quantum algorithms compared against established classical baselines, provide compelling evidence that quantum computation delivers genuine benefit in digital twin applications. The important caveat is that all results were obtained on the Qiskit Aer simulator under ideal noise-free conditions and represent theoretical upper bounds on the advantage achievable on real NISQ hardware~\cite{preskill2018quantum}.
+The healthcare benchmark evaluation provides comprehensive evidence of statistically significant simulator-based algorithmic advantage across all six sub-domains, spanning four distinct computational problem types: combinatorial optimization, classification, simulation, and correlation analysis. All six paired $t$-tests (30 runs each) yielded $p < 0.001$, with Cohen's $d$ values ranging from 8.50 to 26.07---far exceeding the 0.8 threshold for a large effect. The breadth and consistency of these results across six independent modules, each using different quantum algorithms compared against established classical baselines, provide compelling evidence that quantum-inspired algorithmic designs deliver genuine benefit in digital twin applications under simulation conditions. The important caveat is that all results were obtained on the Qiskit Aer simulator under ideal noise-free conditions and represent theoretical upper bounds on the advantage achievable on real NISQ hardware~\cite{preskill2018quantum}.
 
 % -----------------------------------------------------------------------------
 \subsection{RQ4: Cross-Domain Generalization}
@@ -75,7 +75,7 @@ The evidence supports an affirmative answer. The framework generated functional 
 The following limitations bound the current work and should be considered when interpreting the reported results.
 
 \begin{enumerate}
-    \item \textbf{Simulator-only execution.} All quantum computations were executed on the Qiskit Aer simulator~\cite{aleksandrowicz2019qiskit}, which provides ideal, noise-free quantum computation. Real NISQ hardware introduces gate errors, decoherence, and measurement noise that would degrade performance~\cite{preskill2018quantum}. The quantum advantage metrics reported in Chapter~\ref{ch:results} therefore represent theoretical upper bounds; the true magnitude of advantage on physical processors remains unknown until hardware validation is performed~\cite{arute2019quantum}.
+    \item \textbf{Simulator-only execution.} All quantum computations were executed on the Qiskit Aer simulator~\cite{aleksandrowicz2019qiskit}, which performs circuit evolution through classical matrix multiplication rather than physical quantum mechanical processes. The reported speedups (100--1,000$\times$) therefore measure the classical cost advantage of simulating quantum circuits versus executing traditional algorithms, not projected quantum hardware performance. Real NISQ hardware introduces gate errors, decoherence, and measurement noise that would degrade performance~\cite{preskill2018quantum}. The quantum advantage metrics reported in Chapter~\ref{ch:results} represent theoretical upper bounds; the true magnitude of advantage on physical processors remains unknown until hardware validation is performed~\cite{arute2019quantum}.
 
     \item \textbf{NLP accuracy bounds.} The spaCy-based extraction pipeline achieved 84.6\% entity extraction accuracy using rule-based pattern matching, which falls short of what modern large language models could achieve. Extraction errors were concentrated in cases involving complex sentence structures, ambiguous terminology, and implicit system relationships that require contextual reasoning beyond surface-level pattern matching.
 
@@ -95,12 +95,55 @@ The limitations and opportunities identified through this research suggest eight
 
 \begin{figure}[htbp]
 \centering
-\fbox{\begin{minipage}{0.85\textwidth}
-\centering
-\vspace{2.5cm}
-{\small\textit{[Figure description: Future development roadmap. Current thesis (Qiskit Aer simulator, spaCy NLP, single-user prototype) $\rightarrow$ Near-term (real quantum hardware via IBM Quantum/IonQ, LLM-powered conversation via Claude/GPT, multi-tenant SaaS deployment) $\rightarrow$ Long-term (federated quantum digital twins, real-time data streaming, quantum error correction integration).]}}
-\vspace{2.5cm}
-\end{minipage}}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    phase/.style={rounded corners=8pt, draw=#1!60, fill=#1!8, line width=1.2pt,
+                  minimum width=4.6cm, text width=4.2cm, align=left, inner sep=10pt},
+    yearlab/.style={font=\small\bfseries, text=black!60},
+    bigarrow/.style={-{Stealth[length=8pt,width=6pt]}, line width=2pt, color=black!25}
+]
+% Phase 1
+\node[phase=qtwinblue] (p1) at (0,0) {%
+    {\bfseries\normalsize\color{qtwinblue!80}Current Thesis}\\[6pt]
+    {\small
+    $\bullet$ Qiskit Aer Simulator\\
+    $\bullet$ spaCy NLP Pipeline\\
+    $\bullet$ Single-User Prototype\\
+    $\bullet$ SQLite / PostgreSQL\\
+    $\bullet$ 6 Healthcare Modules\\
+    $\bullet$ 488 Passing Tests}
+};
+% Phase 2
+\node[phase=qtwinpurple, right=1.4cm of p1] (p2) {%
+    {\bfseries\normalsize\color{qtwinpurple!80}Near-Term}\\[6pt]
+    {\small
+    $\bullet$ IBM Quantum / IonQ\\
+    $\bullet$ LLM Integration\\
+    $\bullet$ Multi-Tenant SaaS\\
+    $\bullet$ PostgreSQL + Redis\\
+    $\bullet$ 12+ Domain Modules\\
+    $\bullet$ Formal User Study}
+};
+% Phase 3
+\node[phase=qtwinorange, right=1.4cm of p2] (p3) {%
+    {\bfseries\normalsize\color{qtwinorange!80}Long-Term Vision}\\[6pt]
+    {\small
+    $\bullet$ Federated Quantum Twins\\
+    $\bullet$ Real-Time Streaming\\
+    $\bullet$ QEC Integration\\
+    $\bullet$ Enterprise Marketplace\\
+    $\bullet$ Autonomous Twin Networks\\
+    $\bullet$ Production Deployment}
+};
+% Arrows between phases
+\draw[bigarrow] (p1.east) -- (p2.west);
+\draw[bigarrow] (p2.east) -- (p3.west);
+% Year labels
+\node[yearlab, below=4pt of p1.south] {2025--2026};
+\node[yearlab, below=4pt of p2.south] {2027--2028};
+\node[yearlab, below=4pt of p3.south] {2029+};
+\end{tikzpicture}%
+}
 \caption{Future development roadmap for the QTwin platform across three horizons.}
 \label{fig:future-roadmap}
 \end{figure}
@@ -166,4 +209,4 @@ A structured user study with external domain experts (clinicians, military plann
 \label{sec:concluding_remarks}
 % =============================================================================
 
-This thesis presented QTwin, the first universal conversational quantum-powered digital twin platform, validated across four application domains through a codebase of approximately 22,000 lines with 488 passing tests. The experimental evaluation demonstrated statistically significant quantum advantage across all six healthcare benchmark modules, with improvements including 1,000$\times$ throughput gains in personalized medicine and drug discovery, a 13 percentage point accuracy increase in medical imaging, and a 720$\times$ simulation speedup in epidemic modeling---all at $p < 0.001$ with Cohen's $d > 8.0$. The conversational pipeline achieved 84.6\% entity extraction accuracy and 91\% problem type classification accuracy, generating functional twins in an average of 4.3 conversation turns. Cross-domain generalization was confirmed through successful twin generation in military, sports, and environmental domains using zero domain-specific code. These results were obtained on the Qiskit Aer simulator under ideal conditions and represent upper bounds; hardware validation on real quantum processors remains essential to establish the practical magnitude of quantum advantage. The integration of real quantum hardware execution and LLM-powered conversation represents the most promising near-term path toward realizing the platform's full potential as an accessible, domain-agnostic quantum digital twin system.
+This thesis presented QTwin, the first universal conversational quantum-powered digital twin platform, validated across four application domains through a codebase of approximately 22,000 lines with 488 passing tests. The experimental evaluation demonstrated statistically significant simulator-based algorithmic advantage across all six healthcare benchmark modules, with improvements including 1,000$\times$ throughput gains in personalized medicine and drug discovery, a 13 percentage point accuracy increase in medical imaging, and a 720$\times$ simulation speedup in epidemic modeling---all at $p < 0.001$ with Cohen's $d > 8.0$. The conversational pipeline achieved 84.6\% entity extraction accuracy and 91\% problem type classification accuracy, generating functional twins in an average of 4.3 conversation turns. Cross-domain generalization was confirmed through successful twin generation in military, sports, and environmental domains using zero domain-specific code. These results were obtained on the Qiskit Aer statevector simulator, which executes quantum circuits as classical matrix multiplications; the reported improvements reflect algorithmic design superiority rather than hardware quantum speedup, and represent upper bounds that hardware noise and decoherence would moderate. Validation on real quantum processors remains essential to establish the practical magnitude of quantum advantage. The integration of real quantum hardware execution and LLM-powered conversation represents the most promising near-term path toward realizing the platform's full potential as an accessible, domain-agnostic quantum digital twin system.

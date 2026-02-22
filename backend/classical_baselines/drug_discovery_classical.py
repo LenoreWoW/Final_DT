@@ -434,3 +434,189 @@ if __name__ == '__main__':
               f"Binding={candidate['binding_affinity']:.3f}, "
               f"Toxicity={candidate['toxicity_score']:.1f}, "
               f"Complexity={candidate['synthesis_complexity']:.1f}")
+
+
+class HartreeFockBaseline:
+    """
+    Restricted Hartree-Fock baseline for electronic structure calculation.
+
+    Implements a self-consistent field (SCF) iteration using numpy:
+    build Fock matrix -> diagonalize -> update density -> check convergence.
+    This is a proper VQE counterpart since both solve electronic structure
+    problems, unlike the MD baseline which uses empirical force fields.
+
+    Args:
+        n_orbitals: Number of spatial orbitals.
+        n_electrons: Number of electrons.
+        max_iterations: Maximum SCF iterations.
+        convergence_threshold: Energy convergence threshold in Hartree.
+    """
+
+    def __init__(
+        self,
+        n_orbitals: int = 4,
+        n_electrons: int = 2,
+        max_iterations: int = 100,
+        convergence_threshold: float = 1e-6,
+    ):
+        self.n_orbitals = n_orbitals
+        self.n_electrons = n_electrons
+        self.max_iterations = max_iterations
+        self.convergence_threshold = convergence_threshold
+
+    def _build_one_electron_integrals(self, seed: int = 42) -> np.ndarray:
+        """Build the one-electron integral matrix (kinetic + nuclear attraction).
+
+        Returns:
+            Symmetric matrix h of shape (n_orbitals, n_orbitals).
+        """
+        rng = np.random.RandomState(seed)
+        h = rng.randn(self.n_orbitals, self.n_orbitals)
+        h = (h + h.T) / 2  # symmetrize
+        # Make diagonally dominant for physical plausibility
+        np.fill_diagonal(h, np.abs(h.diagonal()) + 1.0)
+        return h
+
+    def _build_two_electron_integrals(self, seed: int = 42) -> np.ndarray:
+        """Build the two-electron repulsion integral tensor.
+
+        Returns:
+            Tensor eri of shape (n_orbitals, n_orbitals, n_orbitals, n_orbitals)
+            with the required 8-fold symmetry approximated.
+        """
+        rng = np.random.RandomState(seed + 1)
+        n = self.n_orbitals
+        eri = rng.rand(n, n, n, n) * 0.5
+        # Enforce partial symmetry: (ij|kl) = (ji|kl) = (ij|lk) = (kl|ij)
+        eri = (eri + eri.transpose(1, 0, 2, 3)) / 2
+        eri = (eri + eri.transpose(0, 1, 3, 2)) / 2
+        eri = (eri + eri.transpose(2, 3, 0, 1)) / 2
+        return eri
+
+    def _build_overlap_matrix(self) -> np.ndarray:
+        """Build the overlap matrix S (identity for orthonormal basis)."""
+        return np.eye(self.n_orbitals)
+
+    def _initial_density(self) -> np.ndarray:
+        """Build initial density matrix from core Hamiltonian guess."""
+        return np.zeros((self.n_orbitals, self.n_orbitals))
+
+    def _build_fock_matrix(
+        self,
+        h: np.ndarray,
+        eri: np.ndarray,
+        D: np.ndarray,
+    ) -> np.ndarray:
+        """Build the Fock matrix F = h + G(D).
+
+        Args:
+            h: One-electron integrals.
+            eri: Two-electron integrals.
+            D: Current density matrix.
+
+        Returns:
+            Fock matrix F.
+        """
+        n = self.n_orbitals
+        G = np.zeros((n, n))
+        for mu in range(n):
+            for nu in range(n):
+                for lam in range(n):
+                    for sig in range(n):
+                        # Coulomb - 0.5 * Exchange
+                        G[mu, nu] += D[lam, sig] * (
+                            eri[mu, nu, lam, sig] - 0.5 * eri[mu, sig, lam, nu]
+                        )
+        return h + G
+
+    def _compute_density(
+        self,
+        C: np.ndarray,
+        n_occ: int,
+    ) -> np.ndarray:
+        """Compute density matrix from MO coefficients.
+
+        Args:
+            C: MO coefficient matrix (columns are orbitals).
+            n_occ: Number of occupied orbitals.
+
+        Returns:
+            Density matrix D.
+        """
+        C_occ = C[:, :n_occ]
+        return 2.0 * C_occ @ C_occ.T
+
+    def _compute_energy(
+        self,
+        D: np.ndarray,
+        h: np.ndarray,
+        F: np.ndarray,
+    ) -> float:
+        """Compute the total electronic energy.
+
+        E = 0.5 * Tr[D(h + F)]
+
+        Args:
+            D: Density matrix.
+            h: One-electron integrals.
+            F: Fock matrix.
+
+        Returns:
+            Total electronic energy in Hartree.
+        """
+        return 0.5 * np.trace(D @ (h + F))
+
+    def run_scf(self, seed: int = 42) -> Dict:
+        """Run the self-consistent field procedure.
+
+        Args:
+            seed: Random seed for integral generation.
+
+        Returns:
+            Dictionary with SCF results including converged energy,
+            number of iterations, and convergence history.
+        """
+        start_time = time.time()
+
+        h = self._build_one_electron_integrals(seed)
+        eri = self._build_two_electron_integrals(seed)
+        S = self._build_overlap_matrix()
+        D = self._initial_density()
+
+        n_occ = self.n_electrons // 2
+        energies: List[float] = []
+        converged = False
+
+        for iteration in range(self.max_iterations):
+            F = self._build_fock_matrix(h, eri, D)
+
+            # Solve generalized eigenvalue problem F C = S C e
+            eigenvalues, C = np.linalg.eigh(F)
+
+            # Build new density
+            D_new = self._compute_density(C, n_occ)
+
+            # Compute energy
+            energy = self._compute_energy(D_new, h, F)
+            energies.append(float(energy))
+
+            # Check convergence
+            if iteration > 0 and abs(energies[-1] - energies[-2]) < self.convergence_threshold:
+                converged = True
+                D = D_new
+                break
+
+            D = D_new
+
+        elapsed = time.time() - start_time
+
+        return {
+            "method": "Hartree-Fock SCF",
+            "converged": converged,
+            "n_iterations": len(energies),
+            "final_energy": energies[-1] if energies else 0.0,
+            "convergence_history": energies,
+            "n_orbitals": self.n_orbitals,
+            "n_electrons": self.n_electrons,
+            "execution_time": elapsed,
+        }

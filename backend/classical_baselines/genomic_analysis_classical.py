@@ -480,3 +480,137 @@ if __name__ == '__main__':
     print(f"\nConfusion Matrix:")
     print(f"  TP: {results['true_positives']}, FP: {results['false_positives']}")
     print(f"  FN: {results['false_negatives']}, TN: {results['true_negatives']}")
+
+
+def compute_spearman_correlation(
+    X: np.ndarray,
+    top_k: int = 100,
+) -> Dict:
+    """
+    Compute Spearman rank correlation between all gene pairs.
+
+    Spearman correlation captures monotonic (not just linear) relationships,
+    making it a stronger classical counterpart to the TTN's multi-body
+    correlation analysis than Pearson correlation alone.
+
+    Args:
+        X: Gene expression matrix of shape (n_samples, n_genes).
+        top_k: Number of top correlated pairs to return.
+
+    Returns:
+        Dictionary with correlation results and top pairs.
+    """
+    start_time = time.time()
+    n_samples, n_genes = X.shape
+
+    # Rank transform each gene across samples
+    ranks = np.zeros_like(X)
+    for j in range(n_genes):
+        order = np.argsort(X[:, j])
+        ranks[order, j] = np.arange(n_samples)
+
+    # Compute Spearman correlation matrix from ranks
+    ranks_centered = ranks - ranks.mean(axis=0)
+    norms = np.sqrt(np.sum(ranks_centered ** 2, axis=0))
+    norms[norms == 0] = 1.0  # avoid division by zero
+    corr_matrix = (ranks_centered.T @ ranks_centered) / (norms[:, None] * norms[None, :])
+
+    # Extract top-k pairs (excluding diagonal)
+    np.fill_diagonal(corr_matrix, 0)
+    abs_corr = np.abs(corr_matrix)
+    flat_indices = np.argsort(abs_corr.ravel())[::-1][:top_k]
+    pairs = []
+    for idx in flat_indices:
+        i, j = divmod(idx, n_genes)
+        if i < j:  # avoid duplicates
+            pairs.append({
+                "gene_i": int(i),
+                "gene_j": int(j),
+                "spearman_rho": float(corr_matrix[i, j]),
+            })
+
+    elapsed = time.time() - start_time
+
+    return {
+        "method": "Spearman Rank Correlation",
+        "n_genes": n_genes,
+        "n_pairs_analyzed": n_genes * (n_genes - 1) // 2,
+        "top_pairs": pairs[:top_k],
+        "computation_time": elapsed,
+        "mean_abs_correlation": float(np.mean(abs_corr[abs_corr > 0])),
+    }
+
+
+def compute_mutual_information(
+    X: np.ndarray,
+    y: np.ndarray,
+    n_bins: int = 10,
+) -> Dict:
+    """
+    Compute mutual information between each gene and the target variable.
+
+    MI captures arbitrary (including nonlinear) statistical dependencies,
+    providing a direct classical counterpart to the TTN's ability to detect
+    complex multi-variable correlations.
+
+    Args:
+        X: Gene expression matrix of shape (n_samples, n_genes).
+        y: Binary target labels of shape (n_samples,).
+        n_bins: Number of histogram bins for discretization.
+
+    Returns:
+        Dictionary with MI scores for each gene and top features.
+    """
+    start_time = time.time()
+    n_samples, n_genes = X.shape
+
+    mi_scores = np.zeros(n_genes)
+
+    # Discretize y (already binary) -> compute H(Y)
+    py = np.bincount(y.astype(int), minlength=2) / n_samples
+    py = py[py > 0]
+    h_y = -np.sum(py * np.log2(py))
+
+    for j in range(n_genes):
+        # Discretize gene expression into bins
+        gene_vals = X[:, j]
+        bins = np.linspace(gene_vals.min() - 1e-10, gene_vals.max() + 1e-10, n_bins + 1)
+        digitized = np.digitize(gene_vals, bins) - 1
+        digitized = np.clip(digitized, 0, n_bins - 1)
+
+        # Joint distribution P(X_bin, Y)
+        joint = np.zeros((n_bins, 2))
+        for s in range(n_samples):
+            joint[digitized[s], int(y[s])] += 1
+        joint /= n_samples
+
+        # Marginals
+        px = joint.sum(axis=1)
+        py_given_x = joint.sum(axis=0)
+
+        # MI = H(Y) - H(Y|X)
+        h_y_given_x = 0.0
+        for b in range(n_bins):
+            if px[b] > 0:
+                cond = joint[b, :] / px[b]
+                cond = cond[cond > 0]
+                h_y_given_x -= px[b] * np.sum(cond * np.log2(cond))
+
+        mi_scores[j] = h_y - h_y_given_x
+
+    elapsed = time.time() - start_time
+
+    # Top genes by MI
+    top_indices = np.argsort(mi_scores)[::-1][:20]
+
+    return {
+        "method": "Mutual Information",
+        "n_genes": n_genes,
+        "top_genes": [
+            {"gene_index": int(idx), "mi_score": float(mi_scores[idx])}
+            for idx in top_indices
+        ],
+        "mean_mi": float(np.mean(mi_scores)),
+        "max_mi": float(np.max(mi_scores)),
+        "computation_time": elapsed,
+    }

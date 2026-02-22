@@ -2,12 +2,12 @@
 # Fair classical equivalents for quantum vs classical comparison in the Showcase
 #
 # Modules:
-# - personalized_medicine_classical.py: Genetic Algorithm + Grid Search
-# - drug_discovery_classical.py: Classical Molecular Dynamics
+# - personalized_medicine_classical.py: Genetic Algorithm + Grid Search + Simulated Annealing
+# - drug_discovery_classical.py: Classical Molecular Dynamics + Hartree-Fock SCF
 # - medical_imaging_classical.py: CNN (ResNet/VGG)
-# - genomic_analysis_classical.py: PCA + Random Forest
+# - genomic_analysis_classical.py: PCA + Random Forest + Spearman + Mutual Information
 # - epidemic_modeling_classical.py: Agent-Based Modeling
-# - hospital_operations_classical.py: Linear Programming + Heuristics
+# - hospital_operations_classical.py: Linear Programming + Heuristics + Integer Programming
 
 import time
 from typing import Any, Dict
