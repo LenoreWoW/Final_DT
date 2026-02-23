@@ -101,6 +101,14 @@ async def list_twins(
     """List all digital twins with optional filtering."""
     query = db.query(TwinModel)
 
+    # Soft authorization: when authenticated, scope to the user's organization
+    # or public twins. Unauthenticated requests see everything (thesis demo).
+    if current_user is not None and getattr(current_user, "organization_id", None):
+        query = query.filter(
+            (TwinModel.organization_id == current_user.organization_id)
+            | (TwinModel.is_public == True)  # noqa: E712
+        )
+
     if status:
         query = query.filter(TwinModel.status == status.value)
     if domain:
@@ -120,6 +128,19 @@ async def get_twin(twin_id: str, db: Session = Depends(get_db), current_user=Dep
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Twin with id {twin_id} not found"
         )
+
+    # Soft authorization: authenticated users can only see twins belonging to
+    # their organization or public twins. Unauthenticated access is allowed
+    # for the thesis demo.
+    if current_user is not None and getattr(current_user, "organization_id", None):
+        if (
+            db_twin.organization_id != current_user.organization_id
+            and not db_twin.is_public
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this twin",
+            )
 
     return _twin_model_to_schema(db_twin)
 
@@ -167,6 +188,16 @@ async def delete_twin(twin_id: str, db: Session = Depends(get_db), current_user=
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Twin with id {twin_id} not found"
         )
+
+    # Authorization: if the user is authenticated, they must own the twin
+    # (same organization). Unauthenticated deletes are still allowed for the
+    # thesis demo to avoid breaking existing flows.
+    if current_user is not None and getattr(current_user, "organization_id", None):
+        if db_twin.organization_id != current_user.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to delete this twin",
+            )
 
     db.delete(db_twin)
     db.commit()
@@ -232,35 +263,16 @@ async def run_simulation(
     try:
         sim_result = generator.simulate(system, config)
     except Exception as exc:
-        # Fallback: generate a basic result if the engine fails
         logger.error("Simulation engine error for twin %s: %s", twin_id, exc, exc_info=True)
-        import time
-        start_time = time.time()
-        results = {
-            "final_state": db_twin.state,
-            "trajectory": [],
-            "statistics": {
-                "mean_outcome": 0.75,
-                "std_outcome": 0.15,
-                "best_scenario": 0.92,
-                "worst_scenario": 0.58,
-            },
-        }
-        execution_time = time.time() - start_time
-
         sim_result = SimulationResult(
             twin_id=twin_id,
             simulation_id=str(uuid.uuid4()),
             time_steps=request.time_steps,
             scenarios_run=request.scenarios,
-            results=results,
+            results={"error": str(exc), "fallback": True},
             predictions=[],
-            quantum_advantage={
-                "scenarios_tested": request.scenarios * 1000,
-                "classical_equivalent_time": execution_time * 1000,
-                "speedup": 1000,
-            },
-            execution_time_seconds=execution_time,
+            quantum_advantage=None,
+            execution_time_seconds=0.0,
             created_at=datetime.now(timezone.utc),
         )
 
@@ -338,8 +350,8 @@ async def query_twin(
         # Override twin_id to match the actual twin
         qr.twin_id = twin_id
         return qr
-    except Exception:
-        # Fallback in case the engine fails
+    except Exception as exc:
+        logger.error("Query engine error for twin %s: %s", twin_id, exc, exc_info=True)
         query_type = request.query_type
         if not query_type:
             query_type = _detect_query_type(request.query)
@@ -348,14 +360,10 @@ async def query_twin(
             twin_id=twin_id,
             query=request.query,
             query_type=query_type,
-            answer=f"Analysis of '{request.query}' for twin '{db_twin.name}'",
+            answer=f"Engine error: {str(exc)}",
             data={},
-            confidence=0.85,
-            quantum_metrics={
-                "qubits_used": 10,
-                "gate_depth": 50,
-                "measurement_shots": 1000,
-            }
+            confidence=None,
+            quantum_metrics=None,
         )
 
 

@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
+# THESIS DEMO: Default secret is acceptable for local/demo deployment.
+# Production requires JWT_SECRET_KEY environment variable (enforced by guard below).
 _DEFAULT_SECRET = "quantum-twin-platform-dev-secret-key-change-in-production"
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", _DEFAULT_SECRET)

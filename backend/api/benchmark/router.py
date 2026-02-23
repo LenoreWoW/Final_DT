@@ -5,6 +5,9 @@ This powers the Quantum Advantage Showcase section.
 """
 
 import asyncio
+import csv
+import io
+import json
 import sys
 import time
 import uuid
@@ -65,10 +68,11 @@ class AllBenchmarksResponse(BaseModel):
 
 
 # =============================================================================
-# Benchmark Data (Pre-computed for showcase)
+# Benchmark Data
 # =============================================================================
 
-BENCHMARK_RESULTS = {
+# Fallback template used when experimental results are not available.
+_BENCHMARK_RESULTS_TEMPLATE: Dict[str, Any] = {
     "personalized_medicine": {
         "classical_time_seconds": 4.2,
         "quantum_time_seconds": 0.004,
@@ -76,27 +80,23 @@ BENCHMARK_RESULTS = {
         "quantum_accuracy": 0.92,
         "speedup": 1000,
         "improvement": 0.14,
+        "source": "template",
         "details": {
             "classical_method": "Genetic Algorithm + Grid Search",
             "quantum_method": "QAOA",
-            "treatments_tested_classical": 1000,
-            "treatments_tested_quantum": 1000000,
-            "patient_factors": 12,
-            "drug_combinations": 180,
         },
     },
     "drug_discovery": {
-        "classical_time_seconds": 3600,  # 1 hour
+        "classical_time_seconds": 3600,
         "quantum_time_seconds": 3.6,
         "classical_accuracy": 0.72,
         "quantum_accuracy": 0.89,
         "speedup": 1000,
         "improvement": 0.17,
+        "source": "template",
         "details": {
             "classical_method": "Classical Molecular Dynamics",
             "quantum_method": "VQE",
-            "molecules_screened": 10000,
-            "binding_affinity_calculations": 50000,
         },
     },
     "medical_imaging": {
@@ -106,12 +106,10 @@ BENCHMARK_RESULTS = {
         "quantum_accuracy": 0.87,
         "speedup": 1.1,
         "improvement": 0.13,
+        "source": "template",
         "details": {
             "classical_method": "CNN (ResNet-50)",
             "quantum_method": "Quantum Neural Network + Sensing",
-            "images_analyzed": 1000,
-            "tumor_detection_sensitivity": {"classical": 0.72, "quantum": 0.90},
-            "false_positive_rate": {"classical": 0.15, "quantum": 0.08},
         },
     },
     "genomic_analysis": {
@@ -121,27 +119,23 @@ BENCHMARK_RESULTS = {
         "quantum_accuracy": 0.85,
         "speedup": 10,
         "improvement": 0.17,
+        "source": "template",
         "details": {
             "classical_method": "PCA + Random Forest",
             "quantum_method": "Tensor Networks",
-            "genes_analyzed_classical": 100,
-            "genes_analyzed_quantum": 1000,
-            "interaction_pairs_detected": {"classical": 450, "quantum": 4500},
         },
     },
     "epidemic_modeling": {
-        "classical_time_seconds": 259200,  # 3 days
-        "quantum_time_seconds": 360,  # 6 minutes
+        "classical_time_seconds": 259200,
+        "quantum_time_seconds": 360,
         "classical_accuracy": 0.65,
         "quantum_accuracy": 0.88,
         "speedup": 720,
         "improvement": 0.23,
+        "source": "template",
         "details": {
             "classical_method": "Agent-Based Modeling",
             "quantum_method": "Quantum Simulation",
-            "agents_simulated": 1000000,
-            "scenarios_tested": 10000,
-            "intervention_strategies_evaluated": 50,
         },
     },
     "hospital_operations": {
@@ -151,15 +145,35 @@ BENCHMARK_RESULTS = {
         "quantum_accuracy": 0.91,
         "speedup": 100,
         "improvement": 0.21,
+        "source": "template",
         "details": {
             "classical_method": "Linear Programming + Heuristics",
             "quantum_method": "QAOA",
-            "patients_scheduled": 500,
-            "resources_optimized": 50,
-            "wait_time_reduction": 0.73,
         },
     },
 }
+
+
+def _load_benchmark_results() -> Dict[str, Any]:
+    """Load benchmark results from summary.json, falling back to template."""
+    summary_path = project_root / "benchmark_results" / "summary.json"
+    if summary_path.exists():
+        try:
+            with open(summary_path) as f:
+                data = json.load(f)
+            # Ensure every template module is present (fill gaps with template)
+            merged = dict(_BENCHMARK_RESULTS_TEMPLATE)
+            for module_id, entry in data.items():
+                # summary.json entries already carry the keys the router needs
+                merged[module_id] = entry
+            logger.info("Loaded experimental benchmark results from %s", summary_path)
+            return merged
+        except Exception as exc:
+            logger.warning("Failed to load summary.json, using template: %s", exc)
+    return dict(_BENCHMARK_RESULTS_TEMPLATE)
+
+
+BENCHMARK_RESULTS: Dict[str, Any] = _load_benchmark_results()
 
 
 # =============================================================================
@@ -226,17 +240,22 @@ async def get_all_benchmarks(current_user=Depends(get_current_user_optional)):
             quantum_accuracy=data["quantum_accuracy"],
             speedup=data["speedup"],
             improvement=data["improvement"],
-            details=data["details"],
+            details=data.get("details", {}),
             created_at=datetime.now(timezone.utc),
         )
         benchmarks.append(benchmark)
+
+        # Derive statistical significance from experimental data when available
+        stat = data.get("statistical_result") or {}
+        p_val = stat.get("p_value_corrected", stat.get("p_value", 0.001))
+        sig = max(0.0, 1.0 - p_val)
 
         summaries[module_id] = BenchmarkSummary(
             module=module_id,
             quantum_speedup=data["speedup"],
             accuracy_improvement=data["improvement"],
-            scenarios_tested=data["details"].get("scenarios_tested", 1000),
-            statistical_significance=0.999,  # p < 0.001
+            scenarios_tested=data.get("n_runs", 30),
+            statistical_significance=sig,
         )
 
     # Calculate overall quantum advantage
@@ -268,9 +287,37 @@ async def get_benchmark(module_id: str, current_user=Depends(get_current_user_op
         quantum_accuracy=data["quantum_accuracy"],
         speedup=data["speedup"],
         improvement=data["improvement"],
-        details=data["details"],
+        details=data.get("details", {}),
         created_at=datetime.now(timezone.utc),
     )
+
+
+@router.get("/raw/{module_id}")
+async def get_raw_benchmark(module_id: str, current_user=Depends(get_current_user_optional)):
+    """Return raw per-run CSV data as a JSON array for a specific module."""
+    if module_id not in BENCHMARK_RESULTS:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Module '{module_id}' not found",
+        )
+    csv_path = project_root / "benchmark_results" / f"raw_{module_id}.csv"
+    if not csv_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Raw data for '{module_id}' not yet generated. Run scripts/run_benchmarks.py first.",
+        )
+    with open(csv_path) as f:
+        reader = csv.DictReader(f)
+        rows = []
+        for row in reader:
+            rows.append({
+                "run": int(row["run"]),
+                "quantum_time": float(row["quantum_time"]),
+                "classical_time": float(row["classical_time"]),
+                "quantum_accuracy": float(row["quantum_accuracy"]),
+                "classical_accuracy": float(row["classical_accuracy"]),
+            })
+    return {"module": module_id, "n_runs": len(rows), "runs": rows}
 
 
 @router.post("/run/{module_id}")

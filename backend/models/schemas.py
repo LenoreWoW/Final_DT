@@ -189,7 +189,7 @@ class SimulationResult(BaseModel):
     scenarios_run: int
     results: Dict[str, Any]
     predictions: List[Dict[str, Any]] = Field(default_factory=list)
-    quantum_advantage: Dict[str, Any] = Field(default_factory=dict)
+    quantum_advantage: Optional[Dict[str, Any]] = Field(default=None)
     execution_time_seconds: float
     created_at: datetime
 
@@ -212,8 +212,8 @@ class QueryResponse(BaseModel):
     query_type: QueryType
     answer: str
     data: Dict[str, Any] = Field(default_factory=dict)
-    confidence: float = Field(ge=0.0, le=1.0)
-    quantum_metrics: Dict[str, Any] = Field(default_factory=dict)
+    confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    quantum_metrics: Optional[Dict[str, Any]] = Field(default=None)
 
 
 # =============================================================================
