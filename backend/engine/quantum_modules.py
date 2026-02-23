@@ -1153,9 +1153,6 @@ def run_personalized_medicine(params: dict) -> QuantumResult:
             "edges": edges,
         })
 
-        if not qaoa_result.used_quantum:
-            raise RuntimeError("QAOA sub-call did not use quantum")
-
         best_cut = qaoa_result.result.get("best_cut", [1] * n_treatments)
         # Map QAOA result to treatment selection
         selected_treatments = [treatments_list[i] for i in range(len(best_cut))
@@ -1183,7 +1180,7 @@ def run_personalized_medicine(params: dict) -> QuantumResult:
             },
             metrics=qaoa_result.metrics,
             execution_time=time.time() - start,
-            used_quantum=True,
+            used_quantum=qaoa_result.used_quantum,
             error=None,
             qasm_circuit=qaoa_result.qasm_circuit,
         )
@@ -1393,9 +1390,6 @@ def run_medical_imaging(params: dict) -> QuantumResult:
             "schedule": "adaptive",
         })
 
-        if not nq_result.used_quantum:
-            raise RuntimeError("Neural quantum sub-call did not use quantum")
-
         # Map classification result to diagnostic findings
         accuracy = nq_result.result.get("success_probability", 0.5)
         solution = nq_result.result.get("solution", [0] * n_features)
@@ -1422,7 +1416,7 @@ def run_medical_imaging(params: dict) -> QuantumResult:
             },
             metrics=nq_result.metrics,
             execution_time=time.time() - start,
-            used_quantum=True,
+            used_quantum=nq_result.used_quantum,
             error=None,
             qasm_circuit=nq_result.qasm_circuit,
         )
@@ -1483,9 +1477,6 @@ def run_genomic_analysis(params: dict) -> QuantumResult:
             "circuit_depth": 6,
         })
 
-        if not ttn_result.used_quantum:
-            raise RuntimeError("TTN sub-call did not use quantum")
-
         accuracy = ttn_result.result.get("accuracy", ttn_result.result.get("fidelity", 0.7))
         fidelity = ttn_result.result.get("fidelity", 0.85)
 
@@ -1525,7 +1516,7 @@ def run_genomic_analysis(params: dict) -> QuantumResult:
             },
             metrics=ttn_result.metrics,
             execution_time=time.time() - start,
-            used_quantum=True,
+            used_quantum=ttn_result.used_quantum,
             error=None,
             qasm_circuit=ttn_result.qasm_circuit,
         )
@@ -1577,10 +1568,10 @@ def run_epidemic_modeling(params: dict) -> QuantumResult:
         from qiskit_aer import AerSimulator
 
         pop = params.get("population", 1_000_000)
-        initial_cases = params.get("initial_cases", 500)
+        initial_cases = min(params.get("initial_cases", 500), int(pop * 0.1))
         infection_rate = params.get("infection_rate", 0.45)
         vaccination_rate = params.get("vaccination_rate", 0.45)
-        hospital_capacity = params.get("hospital_capacity", 2000)
+        hospital_capacity = params.get("hospital_capacity", max(int(pop * 0.02), 10))
 
         n = 6  # 6-qubit Trotter-step Hamiltonian evolution
         time_steps = 3  # Trotter steps
@@ -1768,9 +1759,6 @@ def run_hospital_operations(params: dict) -> QuantumResult:
             "edges": edges,
         })
 
-        if not qaoa_result.used_quantum:
-            raise RuntimeError("QAOA sub-call did not use quantum")
-
         cut_value = qaoa_result.result.get("cut_value", 2)
         best_cut = qaoa_result.result.get("best_cut", [0] * n_nodes)
 
@@ -1800,7 +1788,7 @@ def run_hospital_operations(params: dict) -> QuantumResult:
             },
             metrics=qaoa_result.metrics,
             execution_time=time.time() - start,
-            used_quantum=True,
+            used_quantum=qaoa_result.used_quantum,
             error=None,
             qasm_circuit=qaoa_result.qasm_circuit,
         )
@@ -1961,6 +1949,8 @@ class QuantumModuleRegistry:
         """Check if the underlying quantum module can be imported."""
         try:
             from qiskit_aer import AerSimulator
+            if name == "pennylane_ml":
+                import pennylane
             return True
         except ImportError:
             return False

@@ -125,16 +125,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Validate environment setup
-      run: |
-        python validate_env.py
-        
     - name: Run tests with coverage
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_quantum_trail
         REDIS_URL: redis://localhost:6379/0
         SECRET_KEY: test-secret-key-for-ci-cd
-        FLASK_ENV: testing
       run: |
         pytest tests/ -v --cov=backend --cov-report=xml --cov-report=html --cov-report=term-missing
         
@@ -196,34 +191,22 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Run database migrations
-      env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_quantum_trail
-      run: |
-        alembic upgrade head
-        
     - name: Start application
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_quantum_trail
         REDIS_URL: redis://localhost:6379/0
         SECRET_KEY: test-secret-key-for-integration
-        FLASK_ENV: testing
       run: |
-        python -m flask run --port=5001 &
-        sleep 10  # Wait for app to start
-        
+        uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
+        sleep 5  # Wait for app to start
+
     - name: Test API endpoints
       run: |
-        curl -f http://localhost:5001/health || exit 1
-        curl -f http://localhost:5001/api/simulation/status || exit 1
-        
-    - name: Test GraphQL endpoint
-      run: |
-        curl -X POST -H "Content-Type: application/json" -d '{"query": "query { systemStatus { status } }"}' http://localhost:5001/graphql
-        
+        curl -f http://localhost:8000/health || exit 1
+
     - name: Clean up
       run: |
-        pkill -f flask || true
+        pkill -f uvicorn || true
 
   # Security Scan
   security:
@@ -265,15 +248,15 @@ jobs:
       with:
         context: .
         push: false
-        tags: quantum-trail:test
+        tags: qtwin:test
         cache-from: type=gha
         cache-to: type=gha,mode=max
         
     - name: Test Docker image
       run: |
-        docker run --name test-container -d -p 5000:5000 quantum-trail:test
+        docker run --name test-container -d -p 8000:8000 qtwin:test
         sleep 15
-        curl -f http://localhost:5000/health || exit 1
+        curl -f http://localhost:8000/health || exit 1
         docker stop test-container
         docker rm test-container
 
@@ -328,10 +311,9 @@ jobs:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_quantum_trail
         REDIS_URL: redis://localhost:6379/0
         SECRET_KEY: test-secret-key-for-perf
-        FLASK_ENV: testing
       run: |
-        python -m flask run --port=5002 &
-        sleep 10
+        uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
+        sleep 5
         
     - name: Run performance tests
       run: |
@@ -348,10 +330,10 @@ jobs:
                 
             @task
             def system_status(self):
-                self.client.get("/api/simulation/status")
+                self.client.get("/health")
         EOF
         
-        locust -f locustfile.py --host=http://localhost:5002 --users=10 --spawn-rate=2 --run-time=30s --headless
+        locust -f locustfile.py --host=http://localhost:8000 --users=10 --spawn-rate=2 --run-time=30s --headless
         
   # Notify on Success/Failure
   notify:

@@ -175,8 +175,10 @@ class MedicalImagingClassical:
         self._simulate_training()
 
     def _simulate_training(self):
-        """Initialize weights using He initialization for better classification"""
+        """He-initialize all layers, then train fc1/fc2 on synthetic data."""
         rng = np.random.RandomState(123)
+
+        # He initialization for all layers
         fan_in_1 = self.cnn.conv1.filters.shape[1] * self.cnn.conv1.filters.shape[2] * self.cnn.conv1.filters.shape[3]
         self.cnn.conv1.filters = rng.randn(*self.cnn.conv1.filters.shape) * np.sqrt(2.0 / fan_in_1)
         fan_in_2 = self.cnn.conv2.filters.shape[1] * self.cnn.conv2.filters.shape[2] * self.cnn.conv2.filters.shape[3]
@@ -188,6 +190,76 @@ class MedicalImagingClassical:
         fan_in_fc2 = self.cnn.fc2.weights.shape[1]
         self.cnn.fc2.weights = rng.randn(*self.cnn.fc2.weights.shape) * np.sqrt(2.0 / fan_in_fc2)
         self.cnn.trained = True
+
+        # Train fc1 and fc2 on synthetic labeled images (conv layers frozen)
+        n_train = 50
+        lr = 0.01
+        n_epochs = 10
+
+        # Generate labeled training data
+        train_images = []
+        train_labels = []
+        for idx in range(n_train):
+            has_tumor = (idx % 2 == 0)
+            img = generate_synthetic_medical_image(
+                has_tumor=has_tumor, size=self.image_size, seed=1000 + idx
+            )
+            preprocessed = self.preprocess_image(img)
+            train_images.append(preprocessed)
+            train_labels.append(1 if has_tumor else 0)
+
+        # Forward through frozen conv layers to get features
+        features = []
+        for img_batch in train_images:
+            x = np.transpose(img_batch, (0, 3, 1, 2))
+            x = self.cnn.conv2d(x, self.cnn.conv1)
+            x = self.cnn.relu(x)
+            x = self.cnn.max_pool2d(x, pool_size=2, stride=2)
+            x = self.cnn.conv2d(x, self.cnn.conv2)
+            x = self.cnn.relu(x)
+            x = self.cnn.max_pool2d(x, pool_size=2, stride=2)
+            x = self.cnn.conv2d(x, self.cnn.conv3)
+            x = self.cnn.relu(x)
+            x = self.cnn.max_pool2d(x, pool_size=2, stride=2)
+            x = x.reshape(1, -1)
+            features.append(x[0])
+        features = np.array(features)  # (n_train, fc_input_size)
+
+        # SGD training loop on fc1 and fc2 only
+        for epoch in range(n_epochs):
+            for i in range(n_train):
+                feat = features[i]  # (fc_input_size,)
+                label = train_labels[i]
+
+                # Forward: fc1
+                z1 = feat @ self.cnn.fc1.weights.T + self.cnn.fc1.bias  # (256,)
+                a1 = np.maximum(0, z1)  # ReLU
+
+                # Forward: fc2
+                z2 = a1 @ self.cnn.fc2.weights.T + self.cnn.fc2.bias  # (2,)
+                exp_z = np.exp(z2 - np.max(z2))
+                probs = exp_z / np.sum(exp_z)  # softmax
+
+                # Cross-entropy gradient: dL/dz2 = probs - one_hot
+                one_hot = np.zeros(2)
+                one_hot[label] = 1.0
+                dz2 = probs - one_hot  # (2,)
+
+                # Gradients for fc2
+                dW2 = np.outer(dz2, a1)  # (2, 256)
+                db2 = dz2  # (2,)
+
+                # Backprop through ReLU to fc1
+                da1 = self.cnn.fc2.weights.T @ dz2  # (256,)
+                dz1 = da1 * (z1 > 0).astype(float)  # (256,)
+                dW1 = np.outer(dz1, feat)  # (256, fc_input_size)
+                db1 = dz1  # (256,)
+
+                # SGD update
+                self.cnn.fc2.weights -= lr * dW2
+                self.cnn.fc2.bias -= lr * db2
+                self.cnn.fc1.weights -= lr * dW1
+                self.cnn.fc1.bias -= lr * db1
 
     def preprocess_image(self, image: np.ndarray) -> np.ndarray:
         """Preprocess medical image"""

@@ -29,6 +29,7 @@ sys.path.insert(0, str(project_root))
 from backend.models.schemas import BenchmarkRequest, BenchmarkResult
 from backend.engine.quantum_modules import _generate_qasm
 from backend.engine.benchmark_runner import run_benchmark as run_benchmark_live
+from backend.engine.benchmark_runner import _get_quantum_accuracy
 
 router = APIRouter(prefix="/benchmark", tags=["benchmark"])
 
@@ -311,7 +312,7 @@ async def run_benchmark(
     # Compare if both ran
     if results["classical"] and results["quantum"]:
         results["comparison"] = {
-            "used_quantum": True,
+            "used_quantum": results["quantum"].get("used_quantum", False),
             "speedup": (
                 results["classical"]["execution_time"] /
                 max(results["quantum"]["execution_time"], 0.001)
@@ -378,7 +379,7 @@ def _run_classical_sync(module_id: str, parameters: Dict[str, Any]) -> Dict[str,
         return {
             "method": result["method"],
             "execution_time": result["screening_time"],
-            "accuracy": result["best_binding_affinity"],
+            "accuracy": min(abs(result["best_binding_affinity"]) / 20.0, 1.0),
             "details": result,
         }
 
@@ -424,7 +425,7 @@ def _run_classical_sync(module_id: str, parameters: Dict[str, Any]) -> Dict[str,
         return {
             "method": result["baseline"]["method"],
             "execution_time": result["baseline"]["simulation_time"],
-            "accuracy": result["effectiveness_score"] / 100.0,
+            "accuracy": max(0.0, min(result.get("effectiveness_score", 60.0) / 100.0, 1.0)),
             "details": result,
         }
 
@@ -437,7 +438,7 @@ def _run_classical_sync(module_id: str, parameters: Dict[str, Any]) -> Dict[str,
         return {
             "method": result["method"],
             "execution_time": result["optimization_time"],
-            "accuracy": 0.7,
+            "accuracy": max(0.0, 1.0 - result.get("average_wait_time", 3.0) / max(result.get("max_wait_time", 24.0), 1.0)),
             "details": result,
         }
 
@@ -473,7 +474,7 @@ def _run_quantum_sync(module_id: str, parameters: Dict[str, Any]) -> Dict[str, A
 
     if module_id in registry.available_modules:
         qr = registry.run(module_id, capped)
-        accuracy = BENCHMARK_RESULTS[module_id]["quantum_accuracy"]
+        accuracy = _get_quantum_accuracy(module_id, qr)
         return _sanitize_for_json({
             "method": qr.algorithm,
             "execution_time": time.time() - start_time,

@@ -156,6 +156,8 @@ class ClassicalMolecularDynamics:
             # Clamp forces to prevent numerical overflow, then update positions
             np.clip(forces, -1e6, 1e6, out=forces)
             positions += step_size * forces
+            # Clip positions to prevent overflow
+            np.clip(positions, -1e3, 1e3, out=positions)
 
             # Check convergence
             max_force = np.max(np.abs(forces))
@@ -203,6 +205,9 @@ class ClassicalMolecularDynamics:
 
         # Binding affinity (combination of ligand energy and interaction)
         binding_affinity = binding_energy + 0.5 * interaction_energy
+
+        # Clamp to physically plausible range [−20, 0]
+        binding_affinity = max(min(binding_affinity, 0.0), -20.0)
 
         return binding_affinity
 

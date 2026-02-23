@@ -380,7 +380,7 @@ class EpidemicModelingClassical:
             'with_intervention': with_intervention,
             'lives_saved': lives_saved,
             'infections_prevented': infections_prevented,
-            'effectiveness_score': (lives_saved / baseline['total_deaths'] * 100) if baseline['total_deaths'] > 0 else 0
+            'effectiveness_score': (infections_prevented / max(baseline['total_infected'], 1)) * 100
         }
 
 

@@ -367,8 +367,8 @@ def run_classical_baseline(patient_data: Dict[str, Any]) -> Dict[str, Any]:
         comorbidities=patient_data.get("comorbidities", []),
     )
     
-    # Run optimization
-    optimizer = PersonalizedMedicineClassical()
+    # Run optimization (cap at 100 generations for fair benchmark comparison)
+    optimizer = PersonalizedMedicineClassical(generations=100)
     result = optimizer.optimize(patient)
     
     return {

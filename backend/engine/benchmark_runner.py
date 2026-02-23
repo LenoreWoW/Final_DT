@@ -47,33 +47,42 @@ class BenchmarkReport:
 
 
 def _run_classical_baseline(module_id: str, params: dict) -> dict:
-    """Run the appropriate classical baseline and return {time, accuracy}."""
+    """Run the appropriate classical baseline and return {time, accuracy}.
+
+    Accuracy is normalized to [0, 1] on the same dimension as the quantum
+    metric so the two are directly comparable.
+    """
     start = time.time()
 
     if module_id == "personalized_medicine":
         from backend.classical_baselines.personalized_medicine_classical import run_classical_baseline
         result = run_classical_baseline(params.get("patient_data", {}))
+        # Treatment quality (0-1): best efficacy found by GA
+        efficacy = result.get("best_treatment", {}).get("efficacy", 0.5)
         return {
             "time": time.time() - start,
-            "accuracy": result.get("best_treatment", {}).get("efficacy", 0.7),
+            "accuracy": float(np.clip(efficacy, 0, 1)),
         }
 
     elif module_id == "drug_discovery":
         from backend.classical_baselines.drug_discovery_classical import run_drug_discovery_classical
         library_size = min(params.get("library_size", 20), 20)
         result = run_drug_discovery_classical(library_size=library_size)
+        # Energy quality (0-1): |best_binding_affinity| / 20 capped at 1
+        ba = result.get("best_binding_affinity", -5.0)
         return {
             "time": time.time() - start,
-            "accuracy": abs(result.get("best_binding_affinity", -7.0)) / 15.0,
+            "accuracy": float(min(abs(ba) / 20.0, 1.0)),
         }
 
     elif module_id == "medical_imaging":
         from backend.classical_baselines.medical_imaging_classical import run_medical_imaging_classical
         num_images = min(params.get("num_images", 20), 20)
         result = run_medical_imaging_classical(num_images=num_images)
+        # Classification accuracy (0-1): accuracy is stored as percentage
         return {
             "time": time.time() - start,
-            "accuracy": result.get("accuracy", 70.0) / 100.0,
+            "accuracy": result.get("accuracy", 50.0) / 100.0,
         }
 
     elif module_id == "genomic_analysis":
@@ -81,9 +90,10 @@ def _run_classical_baseline(module_id: str, params: dict) -> dict:
         n_genes = min(params.get("n_genes", 50), 50)
         n_samples = min(params.get("n_samples", 30), 30)
         result = run_genomic_analysis_classical(n_genes=n_genes, n_samples=n_samples)
+        # Classification accuracy (0-1): accuracy is stored as percentage
         return {
             "time": time.time() - start,
-            "accuracy": result.get("accuracy", 65.0) / 100.0,
+            "accuracy": result.get("accuracy", 50.0) / 100.0,
         }
 
     elif module_id == "epidemic_modeling":
@@ -91,43 +101,60 @@ def _run_classical_baseline(module_id: str, params: dict) -> dict:
         pop = min(params.get("population_size", 200), 200)
         days = min(params.get("simulation_days", 30), 30)
         result = run_epidemic_modeling_classical(population_size=pop, simulation_days=days)
+        # Containment effectiveness (0-1): 1 - (total_infected / population)
+        with_intervention = result.get("with_intervention", {})
+        total_infected = with_intervention.get("total_infected", pop)
+        population = with_intervention.get("population_size", pop)
         return {
             "time": time.time() - start,
-            "accuracy": result.get("effectiveness_score", 60.0) / 100.0,
+            "accuracy": float(np.clip(1.0 - (total_infected / max(population, 1)), 0, 1)),
         }
 
     elif module_id == "hospital_operations":
         from backend.classical_baselines.hospital_operations_classical import run_hospital_operations_classical
         n_patients = min(params.get("n_patients", 20), 20)
         result = run_hospital_operations_classical(n_patients=n_patients)
+        # Scheduling efficiency (0-1): 1 - (avg_wait / max_possible_wait)
+        avg_wait = result.get("average_wait_time", 5.0)
+        max_possible_wait = result.get("max_wait_time", 24.0)
+        if max_possible_wait <= 0:
+            max_possible_wait = 24.0
         return {
             "time": time.time() - start,
-            "accuracy": 0.70,
+            "accuracy": float(np.clip(1.0 - (avg_wait / max_possible_wait), 0, 1)),
         }
 
     return {"time": time.time() - start, "accuracy": 0.5}
 
 
 def _get_quantum_accuracy(module_id: str, qr) -> float:
-    """Extract a comparable accuracy metric from a QuantumResult."""
+    """Extract a comparable accuracy metric from a QuantumResult.
+
+    Each metric is normalized to [0, 1] on the same dimension as the
+    classical counterpart so quantum vs classical scores are directly
+    comparable.
+    """
     r = qr.result
     if module_id == "personalized_medicine":
-        return r.get("predicted_response_rate", r.get("quantum_confidence", 0.8))
+        # Treatment quality (0-1)
+        return float(np.clip(r.get("predicted_response_rate", 0.5), 0, 1))
     elif module_id == "drug_discovery":
-        candidates = r.get("top_candidates", [])
-        if candidates:
-            best = max(abs(c.get("binding_affinity", -7.0)) for c in candidates)
-            return min(best / 15.0, 1.0)
-        return 0.8
+        # Energy quality (0-1): |ground_state_energy| / 5 capped at 1
+        gse = r.get("ground_state_energy", -2.0)
+        return float(min(abs(gse) / 5.0, 1.0))
     elif module_id == "medical_imaging":
-        return r.get("diagnostic_confidence", 0.85)
+        # Classification accuracy (0-1)
+        return float(np.clip(r.get("diagnostic_confidence", 0.5), 0, 1))
     elif module_id == "genomic_analysis":
-        return min(r.get("actionable_mutations", 5) / 10.0, 1.0)
+        # Classification accuracy (0-1)
+        return float(np.clip(r.get("classification_accuracy", 0.5), 0, 1))
     elif module_id == "epidemic_modeling":
-        return r.get("confidence_level", 0.85)
+        # Containment effectiveness (0-1)
+        return float(np.clip(r.get("confidence_level", 0.5), 0, 1))
     elif module_id == "hospital_operations":
-        return r.get("transfer_efficiency", 0.85)
-    return 0.8
+        # Scheduling efficiency (0-1)
+        return float(np.clip(r.get("transfer_efficiency", 0.5), 0, 1))
+    return 0.5
 
 
 def run_benchmark(
@@ -203,9 +230,23 @@ def run_benchmark(
 
 
 def _generate_problem_params(module_id: str, rng) -> dict:
-    """Generate random problem instance parameters for a module."""
+    """Generate random problem instance parameters for a module.
+
+    The same dict is passed to both the quantum and classical runners
+    so parameters must use keys understood by both sides.
+    """
     if module_id == "personalized_medicine":
-        return {"patient_data": {"age": int(rng.randint(20, 80)), "severity": float(rng.uniform(0.3, 0.9))}}
+        age = int(rng.randint(20, 80))
+        stage = int(rng.randint(1, 5))
+        return {
+            "patient_data": {
+                "age": age,
+                "cancer_type": "breast",
+                "cancer_stage": stage,
+                "biomarkers": {"ER+": 0.8, "HER2+": 0.2},
+                "comorbidities": [],
+            },
+        }
     elif module_id == "drug_discovery":
         return {"num_candidates": 10, "library_size": 20}
     elif module_id == "medical_imaging":
@@ -213,7 +254,9 @@ def _generate_problem_params(module_id: str, rng) -> dict:
     elif module_id == "genomic_analysis":
         return {"n_genes": 50, "n_samples": 30}
     elif module_id == "epidemic_modeling":
-        return {"population": int(rng.randint(5000, 20000)), "population_size": 200, "simulation_days": 30}
+        pop = int(rng.randint(100, 300))
+        return {"population": pop, "population_size": pop, "simulation_days": 30}
     elif module_id == "hospital_operations":
-        return {"n_patients": int(rng.randint(5, 15))}
+        n = int(rng.randint(5, 15))
+        return {"n_patients": n}
     return {}

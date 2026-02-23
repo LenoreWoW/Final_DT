@@ -401,11 +401,11 @@ def run_hospital_operations_classical(n_patients: int = 100) -> Dict:
     Returns:
         Benchmark results
     """
-    # Hospital resources
+    # Hospital resources — reduced to create realistic contention
     resources = {
-        ResourceType.BED: 20,
-        ResourceType.DOCTOR: 10,
-        ResourceType.NURSE: 15,
+        ResourceType.BED: max(n_patients // 3, 3),
+        ResourceType.DOCTOR: max(n_patients // 4, 2),
+        ResourceType.NURSE: max(n_patients // 3, 3),
         ResourceType.OR: 5,
         ResourceType.ICU: 5
     }

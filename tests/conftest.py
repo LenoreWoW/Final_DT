@@ -24,7 +24,6 @@ def setup_test_environment():
     test_env = {
         'SECRET_KEY': 'test_secret_key_for_testing_only',
         'DATABASE_URL': 'sqlite:///:memory:',
-        'DISABLE_QUANTUM': 'true',
         'LOG_LEVEL': 'WARNING',
     }
     with patch.dict(os.environ, test_env):

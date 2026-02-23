@@ -45,7 +45,20 @@ class StatisticalResult:
 
 
 def compute_cohens_d(group1: np.ndarray, group2: np.ndarray) -> float:
-    """Compute Cohen's d effect size for two independent groups."""
+    """Compute Cohen's d for paired samples: d = mean(diffs) / std(diffs, ddof=1)."""
+    diffs = np.asarray(group1, dtype=float) - np.asarray(group2, dtype=float)
+    mean_diff = float(np.mean(diffs))
+    std_diffs = float(np.std(diffs, ddof=1))
+    if std_diffs == 0:
+        # Zero variance: no effect if mean is also zero, otherwise perfect effect
+        if mean_diff == 0:
+            return 0.0
+        return 1e6 if mean_diff > 0 else -1e6
+    return mean_diff / std_diffs
+
+
+def compute_cohens_d_independent(group1: np.ndarray, group2: np.ndarray) -> float:
+    """Compute Cohen's d effect size for two independent groups (pooled SD)."""
     n1, n2 = len(group1), len(group2)
     var1, var2 = np.var(group1, ddof=1), np.var(group2, ddof=1)
     # Pooled standard deviation
