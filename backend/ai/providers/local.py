@@ -46,7 +46,7 @@ class ProblemType(str, Enum):
 # Mapping: problem type -> recommended quantum algorithm
 PROBLEM_TO_ALGORITHM = {
     ProblemType.OPTIMIZATION: "QAOA",
-    ProblemType.CLASSIFICATION: "VQC/QSVM",
+    ProblemType.CLASSIFICATION: "VQC",
     ProblemType.SIMULATION: "Quantum Simulation",
     ProblemType.FORECASTING: "Tensor Network",
     ProblemType.ANOMALY_DETECTION: "Quantum Autoencoder",

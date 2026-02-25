@@ -139,9 +139,14 @@ def _get_quantum_accuracy(module_id: str, qr) -> float:
         # Treatment quality (0-1)
         return float(np.clip(r.get("predicted_response_rate", 0.5), 0, 1))
     elif module_id == "drug_discovery":
-        # Energy quality (0-1): |ground_state_energy| / 5 capped at 1
+        # Binding affinity quality (0-1): use top_candidates binding_affinity
+        # divided by 20.0 (same scale as classical baseline) for comparability
+        top = r.get("top_candidates", [])
+        if top:
+            ba = top[0].get("binding_affinity", -5.0)
+            return float(min(abs(ba) / 20.0, 1.0))
         gse = r.get("ground_state_energy", -2.0)
-        return float(min(abs(gse) / 5.0, 1.0))
+        return float(min(abs(gse) / 20.0, 1.0))
     elif module_id == "medical_imaging":
         # Classification accuracy (0-1)
         return float(np.clip(r.get("diagnostic_confidence", 0.5), 0, 1))

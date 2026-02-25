@@ -50,10 +50,12 @@ def compute_cohens_d(group1: np.ndarray, group2: np.ndarray) -> float:
     mean_diff = float(np.mean(diffs))
     std_diffs = float(np.std(diffs, ddof=1))
     if std_diffs == 0:
-        # Zero variance: no effect if mean is also zero, otherwise perfect effect
+        # Zero variance: no effect if mean is also zero, otherwise cap at ±100
+        # (Cohen's d > 10 already indicates zero distribution overlap;
+        #  100 is a reasonable sentinel for JSON serialization)
         if mean_diff == 0:
             return 0.0
-        return 1e6 if mean_diff > 0 else -1e6
+        return 100.0 if mean_diff > 0 else -100.0
     return mean_diff / std_diffs
 
 
@@ -102,11 +104,16 @@ def paired_comparison(
     # Paired t-test
     t_stat, p_val = stats.ttest_rel(q, c)
 
+    # Clamp infinite t-statistic (scipy returns inf for zero-variance diffs)
+    if not np.isfinite(t_stat):
+        t_stat = np.sign(t_stat) * 1e6 if t_stat != 0 else 0.0
+
     # Bonferroni correction
     p_corrected = min(p_val * n_comparisons, 1.0)
 
-    # Cohen's d
+    # Cohen's d (capped at ±100 for JSON serialization sanity)
     d = compute_cohens_d(q, c)
+    d = max(-100.0, min(100.0, d))
 
     # 95% CI on the difference
     diffs = q - c

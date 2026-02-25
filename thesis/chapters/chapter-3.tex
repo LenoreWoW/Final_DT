@@ -12,7 +12,7 @@ This chapter presents the research methodology and technical design of the QTwin
 \label{sec:research_methodology}
 % =============================================================================
 
-This thesis adopts the design science research methodology (DSRM), which emphasizes the creation and evaluation of innovative artifacts as the central research activity. The primary artifact is the QTwin platform---an end-to-end system that accepts natural language system descriptions and produces quantum-powered digital twins. Development followed an iterative cycle of requirements analysis, architectural design, implementation, and evaluation. Functional requirements included conversational entity extraction, dynamic quantum algorithm selection, universal twin generation, and OpenQASM circuit export~\cite{cross2017openqasm, cross2022openqasm3}. Non-functional requirements encompassed sub-second NLP response latency, extensibility to new domains without code modification, and reproducibility of all quantum computations. Early prototyping revealed that spaCy's pre-trained NER was insufficient for domain-specific entities, motivating the domain-adaptive pattern matching system (Section~\ref{sec:conversational_ai_method}), and initial QAOA benchmarking prompted warm-starting strategies~\cite{farhi2014qaoa}.
+This thesis adopts the design science research methodology (DSRM), which emphasizes the creation and evaluation of innovative artifacts as the central research activity. The primary artifact is the QTwin platform---an end-to-end system that accepts natural language system descriptions and produces quantum-powered digital twins. Development followed an iterative cycle of requirements analysis, architectural design, implementation, and evaluation. Functional requirements included conversational entity extraction, dynamic quantum algorithm selection, universal twin generation, and OpenQASM circuit export~\cite{cross2017openqasm, cross2022openqasm3}. Non-functional requirements encompassed sub-second NLP response latency, extensibility to new domains without code modification, and reproducibility of all quantum computations. Early prototyping revealed that spaCy's pre-trained NER alone was insufficient for domain-specific entities, motivating the domain-adaptive pattern matching system as the primary extraction stage (Section~\ref{sec:conversational_ai_method}), and initial QAOA benchmarking prompted warm-starting strategies~\cite{farhi2014qaoa}.
 
 The evaluation strategy combines \textit{depth validation}---quantum algorithms against classical baselines across six healthcare sub-domains with statistical significance testing---and \textit{breadth validation}---cross-domain generalization using military, sports, and environmental scenarios. The methodology addresses known concerns in quantum computing research: strong classical baselines, complete result reporting, and statistical validation with effect size analysis~\cite{preskill2018quantum}.
 
@@ -143,7 +143,8 @@ Backend API & FastAPI & 0.100+ & Asynchronous REST API with OpenAPI docs, Pydant
 Frontend & Next.js & 14 & App Router, React Server Components, SSR/CSR hybrid \\
 Quantum Simulator & Qiskit Aer & 0.45+ & Statevector and QASM simulation of quantum circuits \\
 Differentiable QC & PennyLane & 0.33+ & Gradient-based optimization via parameter-shift rule \\
-NLP Pipeline & spaCy & 3.x & Tokenization, POS tagging, NER, dependency parsing \\
+NLP Pipeline (primary) & Custom regex & --- & Domain-adaptive pattern matching across 10 domains \\
+NLP Enrichment (optional) & spaCy & 3.x & Statistical NER for supplementary entity recognition \\
 Database (prod) & PostgreSQL & 15 & ACID-compliant relational storage with JSON columns \\
 Database (dev) & SQLite & 3.x & Zero-configuration fallback for development \\
 Cache & Redis & 7 & Circuit result caching and session management \\
@@ -154,7 +155,7 @@ Containerization & Docker Compose & 2.x & Database and cache service orchestrati
 \end{tabular}
 \end{table}
 
-FastAPI's asynchronous architecture enables concurrent quantum circuit execution. The quantum computing layer combines Qiskit Aer~\cite{aleksandrowicz2019qiskit} for simulation with PennyLane~\cite{bergholm2018pennylane} for differentiable quantum programming, while spaCy~\cite{honnibal2020spacy} provides the NLP pipeline and Redis~7 caches circuit results.
+FastAPI's asynchronous architecture enables concurrent quantum circuit execution. The quantum computing layer combines Qiskit Aer~\cite{aleksandrowicz2019qiskit} for simulation with PennyLane~\cite{bergholm2018pennylane} for differentiable quantum programming, while the NLP pipeline uses a two-stage architecture (rule-based pattern matching as primary, spaCy~\cite{honnibal2020spacy} NER as secondary enrichment) and Redis~7 caches circuit results.
 
 % =============================================================================
 \section{Conversational AI for System Extraction}
@@ -166,24 +167,28 @@ FastAPI's asynchronous architecture enables concurrent quantum circuit execution
 \label{subsec:nlp_pipeline}
 % -----------------------------------------------------------------------------
 
-The NLP pipeline transforms unstructured user input into structured system specifications suitable for digital twin generation. Built on spaCy~\cite{honnibal2020spacy}, it operates as a sequence of processing stages: tokenization, POS tagging, NER, dependency parsing, and domain-adaptive entity extraction. The first four stages leverage spaCy's pre-trained English model (\texttt{en\_core\_web\_sm}), providing robust baseline performance for general English text. The fifth stage---domain-adaptive entity extraction---is a custom component applying rule-based pattern matching to identify domain-specific entities, relationships, constraints, and goals not captured by general-purpose NER.
+The NLP pipeline transforms unstructured user input into structured system specifications suitable for digital twin generation. It operates as a two-stage architecture combining rule-based pattern matching with optional statistical NER enrichment:
+
+\textbf{Stage~1: Rule-Based \texttt{SystemExtractor}} (\texttt{backend/engine/extraction/system\_extractor.py}). The primary extraction stage uses domain-adaptive regular expression pattern matching against ten domain vocabularies (healthcare, sports, military, environment, finance, logistics, manufacturing, social, science, and general). For each domain, 50--200 pattern rules map surface-form expressions to typed entities within the QTwin ontology. Domain detection scores each vocabulary by keyword match density and selects the highest-scoring domain. Entity, relationship, constraint, and goal extraction proceeds through sequential pattern matching against the domain's rule set. This stage is fully deterministic and requires no external models or API keys.
+
+\textbf{Stage~2: spaCy NER Enrichment} (\texttt{SpaCyEnhancedExtractor} in \texttt{backend/api/conversation/router.py}). When spaCy~\cite{honnibal2020spacy} with the \texttt{en\_core\_web\_sm} model is available, a secondary enrichment stage runs statistical named entity recognition over the input text. Entities recognized by spaCy (types: ORG, GPE, PERSON, PRODUCT, EVENT, QUANTITY, CARDINAL, DATE, TIME, NORP, FAC, LOC) that are not already captured by Stage~1 are merged additively into the extraction result. This stage cannot remove or modify Stage~1 entities, ensuring that the rule-based extraction remains the authoritative source while spaCy contributes supplementary entities that the pattern rules may have missed. If spaCy is unavailable (not installed or model download failed), the pipeline falls back gracefully to Stage~1 only with no loss of core functionality.
 
 The pipeline defines four structured entity classes: \texttt{Entity} (with identifier, name, type, and properties dictionary representing physical or conceptual objects), \texttt{Relationship} (source and target entity identifiers, type, and strength), \texttt{Rule} (identifier, name, description, and type encoding domain logic), and \texttt{Constraint} (identifier, name, type, value, and comparison operator). Goals are extracted as simple string objectives rather than structured objects, reflecting the observation that optimization targets are typically expressed as concise directives. These classes are domain-agnostic in definition but domain-specific in instantiation, with separate pattern rule sets per domain.
 
-Relationship inference analyzes spaCy's dependency parse tree: when two entities are connected through a dependency path of length three or fewer, a relationship is inferred with type determined by the intervening verb or preposition. Confidence scoring considers pattern specificity and entity frequency; low-confidence items are flagged for clarification. The extraction procedure is presented in Listing~\ref{lst:entity_extraction}.
+Relationship inference is performed by Stage~1's rule-based engine using co-occurrence analysis within sentences: when two entities appear in the same sentence, a relationship is inferred with type determined by intervening keywords. Confidence scoring considers pattern specificity and entity frequency; low-confidence items are flagged for clarification. The two-stage extraction procedure is presented in Listing~\ref{lst:entity_extraction}.
 
-\begin{lstlisting}[caption={Domain-agnostic entity extraction algorithm.}, label={lst:entity_extraction}]
-PROCEDURE ExtractEntities(D, V)
+\begin{lstlisting}[caption={Two-stage entity extraction algorithm.}, label={lst:entity_extraction}]
+PROCEDURE TwoStageExtract(D, V)
   INPUT: Natural language description D
          Domain vocabulary V = {V_healthcare, V_manufacturing, ...}
   OUTPUT: Entities E, Relationships R, Constraints C, Goals G
 
-  doc <- SpaCyParse(D)           // Tokenize, POS tag, NER, parse
+  // --- Stage 1: Rule-based SystemExtractor ---
   E <- {}, R <- {}, C <- {}, G <- {}
-  domain <- ClassifyDomain(doc, V)  // Identify most likely domain
+  domain <- ClassifyDomain(D, V)    // Keyword density scoring
   patterns <- V[domain]             // Load domain-specific patterns
 
-  FOR each token span s IN doc DO
+  FOR each token span s IN D DO
     IF MatchPattern(s, patterns.entities) THEN
       e <- CreateEntity(s, EntityType(s))
       e.confidence <- ComputeConfidence(s, patterns)
@@ -196,12 +201,23 @@ PROCEDURE ExtractEntities(D, V)
   END FOR
 
   FOR each pair (e_i, e_j) IN E x E within same sentence DO
-    path <- DependencyPath(e_i, e_j, doc)
-    IF |path| <= 3 THEN
-      rel_type <- InferRelationType(path)
+    IF CoOccurrence(e_i, e_j) THEN
+      rel_type <- InferRelationType(e_i, e_j, D)
       R <- R UNION {(e_i, rel_type, e_j)}
     END IF
   END FOR
+
+  // --- Stage 2: spaCy NER enrichment (additive only) ---
+  IF SpaCyAvailable() THEN
+    doc <- SpaCyParse(D)           // Tokenize, POS tag, NER
+    existing <- {e.name.lower() FOR e IN E}
+    FOR each named entity ent IN doc.ents DO
+      IF ent.text.lower() NOT IN existing THEN
+        E <- E UNION {CreateEntity(ent, ent.label)}
+        existing <- existing UNION {ent.text.lower()}
+      END IF
+    END FOR
+  END IF
 
   RETURN E, R, C, G
 END PROCEDURE
@@ -285,7 +301,7 @@ The state machine supports backward transitions: additional entity information a
 \label{subsec:provider_abstraction}
 % -----------------------------------------------------------------------------
 
-A provider abstraction layer separates the twin generation engine from the NLP implementation. Two concrete providers are implemented: the \texttt{LocalProvider} using the rule-based spaCy pipeline for deterministic behavior, and the \texttt{AnthropicProvider} using Anthropic's Claude API for enhanced extraction. A provider abstraction layer with a common base class enables swapping between providers without modifying downstream code.
+A provider abstraction layer separates the twin generation engine from the NLP implementation. Two concrete providers are implemented: the \texttt{LocalProvider} using the rule-based extraction pipeline (with optional spaCy NER enrichment) for deterministic behavior, and the \texttt{AnthropicProvider} using Anthropic's Claude API for enhanced extraction. A common base class enables swapping between providers without modifying downstream code.
 
 % =============================================================================
 \section{Universal Twin Generation Engine}
@@ -439,6 +455,8 @@ All quantum circuits are exported in OpenQASM~2.0 format~\cite{cross2017openqasm
 \section{Quantum Algorithm Implementations}
 \label{sec:quantum_algo_impl}
 % =============================================================================
+
+The QTwin platform implements seven quantum algorithmic strategies (QAOA, VQE, VQC, quantum simulation, tree tensor networks, quantum autoencoders, and quantum sensing), each addressing a distinct computational problem type. These seven algorithm families are deployed across six healthcare benchmark modules (Chapter~\ref{ch:results}), where each module invokes one or two algorithms appropriate to its problem structure---for example, drug discovery uses VQE for molecular energy estimation and epidemic modeling uses quantum simulation for population dynamics. The distinction between algorithm families (seven) and application modules (six) reflects the many-to-many mapping between computational methods and domain problems.
 
 % -----------------------------------------------------------------------------
 \subsection{QAOA for Combinatorial Optimization}
@@ -689,7 +707,7 @@ The genomic analysis module discovers gene interaction networks from expression 
 \label{subsec:epidemic_modeling_method}
 % -----------------------------------------------------------------------------
 
-The epidemic modeling module simulates disease spread dynamics using quantum simulation. The SIR model~\cite{kermack1927contribution} is encoded by mapping individuals to qubits ($|0\rangle$ = susceptible, $|1\rangle$ = infected), with CNOT gates modeling contact events parameterized by infection rate $\beta$ and $R_Y$ rotations modeling recovery parameterized by $\gamma$. The simulation proceeds in discrete time steps with periodic boundary conditions. The SEIR extension is supported through ancilla qubits. The output is an epidemic curve of population compartment fractions over time.
+The epidemic modeling module simulates disease spread dynamics using quantum simulation. The SIR model~\cite{kermack1927contribution} is encoded by mapping individuals to qubits ($|0\rangle$ = susceptible, $|1\rangle$ = infected), with CNOT gates modeling contact events parameterized by infection rate $\beta$ and $R_Y$ rotations modeling recovery parameterized by $\gamma$. The simulation proceeds in discrete time steps with periodic boundary conditions. The SEIR (Susceptible-Exposed-Infectious-Recovered) extension is supported through ancilla qubits. The output is an epidemic curve of population compartment fractions over time.
 
 % -----------------------------------------------------------------------------
 \subsection{Hospital Operations Module}
@@ -719,7 +737,7 @@ Each classical baseline uses the same input data, problem formulation, and evalu
 \textbf{Healthcare Module} & \textbf{Quantum Algorithm} & \textbf{Classical Baseline} \\
 \hline
 Personalized Medicine & QAOA & Genetic Algorithm~\cite{holland1975adaptation} \\
-Drug Discovery & VQC & Random Forest + Mol.\ Dynamics \\
+Drug Discovery & VQE & Hartree-Fock SCF \\
 Medical Imaging & Neural Quantum DT & CNN + SVM~\cite{cortes1995support} \\
 Genomic Analysis & Tree Tensor Network & Pearson/Spearman Correlation \\
 Epidemic Modeling & Quantum Simulation & Agent-based SIR/SEIR~\cite{kermack1927contribution} \\

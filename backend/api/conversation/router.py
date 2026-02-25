@@ -1,7 +1,8 @@
 """
 Conversation API Router - Natural language interface for twin creation and querying.
 
-Uses the SystemExtractor from the engine layer for all extraction work.
+Uses the SpaCyEnhancedExtractor which wraps SystemExtractor (regex) with
+optional spaCy NER enrichment for a two-stage extraction pipeline.
 """
 
 import logging
@@ -29,10 +30,80 @@ from backend.auth.dependencies import get_current_user_optional
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# SpaCyEnhancedExtractor: two-stage extraction (regex + spaCy NER)
+# ---------------------------------------------------------------------------
+
+class SpaCyEnhancedExtractor:
+    """Two-stage entity extractor.
+
+    Stage 1: rule-based SystemExtractor (deterministic, domain-adaptive).
+    Stage 2: spaCy en_core_web_sm NER enrichment (additive only).
+
+    Falls back gracefully to regex-only if spaCy is unavailable.
+    """
+
+    def __init__(self):
+        self._regex_extractor = SystemExtractor()
+        self._nlp = None
+        self._spacy_attempted = False
+
+    def _ensure_spacy(self):
+        """Lazy-load spaCy model once."""
+        if self._spacy_attempted:
+            return self._nlp
+        self._spacy_attempted = True
+        try:
+            from backend.ai.providers.local import _get_nlp
+            self._nlp = _get_nlp()
+            if self._nlp:
+                logger.info("SpaCyEnhancedExtractor: spaCy NER available")
+            else:
+                logger.info("SpaCyEnhancedExtractor: spaCy unavailable, regex-only mode")
+        except Exception as exc:
+            logger.warning("SpaCyEnhancedExtractor: failed to load spaCy: %s", exc)
+            self._nlp = None
+        return self._nlp
+
+    def extract(self, text: str, existing_system=None) -> ExtractionResult:
+        """Run two-stage extraction: regex first, then spaCy NER enrichment."""
+        # Stage 1: rule-based extraction (preserves all existing behavior)
+        result = self._regex_extractor.extract(text, existing_system)
+
+        # Stage 2: spaCy NER enrichment (additive only)
+        nlp = self._ensure_spacy()
+        if nlp is None:
+            return result
+
+        try:
+            doc = nlp(text)
+            existing_names = {e.name.lower() for e in result.system.entities}
+
+            for ent in doc.ents:
+                if ent.label_ in ("ORG", "GPE", "PERSON", "PRODUCT", "EVENT",
+                                  "QUANTITY", "CARDINAL", "DATE", "TIME",
+                                  "NORP", "FAC", "LOC", "WORK_OF_ART"):
+                    name_lower = ent.text.lower().strip()
+                    if name_lower and name_lower not in existing_names:
+                        new_entity = Entity(
+                            id=f"spacy_{ent.label_.lower()}_{len(result.system.entities)}",
+                            name=ent.text.strip(),
+                            type=ent.label_.lower(),
+                            properties={"source": "spacy_ner"},
+                        )
+                        result.system.entities.append(new_entity)
+                        existing_names.add(name_lower)
+        except Exception as exc:
+            logger.warning("SpaCyEnhancedExtractor: NER enrichment failed: %s", exc)
+
+        return result
+
+
 router = APIRouter(prefix="/conversation", tags=["conversation"])
 
-# Use the real SystemExtractor from the engine layer
-_extractor = SystemExtractor()
+# Two-stage extractor: regex (SystemExtractor) + spaCy NER enrichment
+_extractor = SpaCyEnhancedExtractor()
 
 
 # =============================================================================
